@@ -1846,6 +1846,7 @@ div.tocify {
 <li><code>broom</code>: A package used for building and cleaning up models built in R.</li>
 <li><code>jtools</code>: A package for making publication ready tables.</li>
 <li><code>kableExtra</code>: A package for printing pretty tables to html.</li>
+<li><code>oddsratio</code>: A package that provides a calculation for odds ratio based upon data and a model.</li>
 </ul>
 </div>
 <div id="from-the-assignment" class="section level1">
@@ -1860,7 +1861,7 @@ div.tocify {
 </div>
 <div id="overview-of-the-data" class="section level2">
 <h2>Overview of the Data</h2>
-<p>The data set health.sas7bdat is a cross-sectional data set of patients discharged from a hospital in 2019. with the following columns: * subject: observation identifier - PCP_visit: had a PCP visit within 5 days of hospital discharge (1=had a visit, 0=did not have a visit) - SEX: (1=male; 0=female) - AGE: patient age in years - urban_rural: live in an urban or non-urban (rural, or suburban) zipcode - unemp_rate: unemployment rate in the subject’s zip code - comorbidity_score: general score of disease states - higher scores indicate higher illness burden - ALZ: had diagnosis of Alzheimer’s (yes=1, no=0) - AST: had diagnosis of asthma (yes=1, no=0) - CAD: had diagnosis of coronary artery disease (yes=1, no=0) - CHF: had diagnosis of congestive heart failure (yes=1, no=0) - COPD: had diagnosis of chronic obstructive pulmonary disease (yes=1, no=0) - DIAB: had diagnosis of diabetes (yes=1, no=0) - HTN: had diagnosis of hypertension (yes=1, no=0) - OSTEO: had diagnosis of osteoarthritis (yes=1, no=0)</p>
+<p>The data set health.sas7bdat is a cross-sectional data set of patients discharged from a hospital in 2019. with the following columns: - subject: observation identifier - PCP_visit: had a PCP visit within 5 days of hospital discharge (1=had a visit, 0=did not have a visit) - SEX: (1=male; 0=female) - AGE: patient age in years - urban_rural: live in an urban or non-urban (rural, or suburban) zipcode - unemp_rate: unemployment rate in the subject’s zip code - comorbidity_score: general score of disease states - higher scores indicate higher illness burden - ALZ: had diagnosis of Alzheimer’s (yes=1, no=0) - AST: had diagnosis of asthma (yes=1, no=0) - CAD: had diagnosis of coronary artery disease (yes=1, no=0) - CHF: had diagnosis of congestive heart failure (yes=1, no=0) - COPD: had diagnosis of chronic obstructive pulmonary disease (yes=1, no=0) - DIAB: had diagnosis of diabetes (yes=1, no=0) - HTN: had diagnosis of hypertension (yes=1, no=0) - OSTEO: had diagnosis of osteoarthritis (yes=1, no=0)</p>
 </div>
 </div>
 <div id="assignment" class="section level1">
@@ -1868,7 +1869,10 @@ div.tocify {
 <div id="read-the-data-in" class="section level2">
 <h2>Read the data in</h2>
 <p>In order to read the data into R, we will need to use the <code>haven</code> package.</p>
-<pre class="r"><code>data &lt;- read_sas(here(&quot;data/health.sas7bdat&quot;))</code></pre>
+<pre class="r"><code>data &lt;- read_sas(here(&quot;data/health.sas7bdat&quot;)) %&gt;% 
+  mutate(PCP_visit = as.factor(PCP_visit),
+         SEX = as.factor(SEX),
+         urban_rural = as.factor(urban_rural))</code></pre>
 <p>Sometimes when you read in SAS data, you get additional column name attributes, for this data, you do not.</p>
 <p>This data set contains 184228 rows with 15 variables, as described in the data overview.</p>
 </div>
@@ -1877,7 +1881,8 @@ div.tocify {
 <div id="questions-1-4" class="section level3">
 <h3>Questions 1-4</h3>
 <p>Using the variable PCP_visit as the outcome variable run a logistic regression model using AGE, SEX, and urban_rural to predict the likelihood that a patient had a follow-up visit with his/her PCP within 5 days of being discharged from the hospital.</p>
-<pre class="r"><code>model &lt;- glm(PCP_visit ~ AGE + SEX + urban_rural ,family=binomial(link=&#39;logit&#39;),data=data)
+<p>If you open up the code block, you will see the formula is similar to SAS. The anova code call is slightly different, SAS defaults to using type 3 while R defaults to 1. We just need to tell R explicit which type we want as well as which test (“Wald”).</p>
+<pre class="r"><code>model &lt;- glm(PCP_visit ~ AGE + SEX + urban_rural ,family=binomial(link=&#39;logit&#39;), data=data)
 
 mod1 &lt;- summary(model)
 
@@ -2071,6 +2076,7 @@ urban_rural
 <p>Here is a summary of the anova chi-sq fit:</p>
 <table class="table" style>
 <caption>
+Analysis of Deviance Table (Type III tests) Response: PCP_visit
 </caption>
 <thead>
 <tr>
@@ -2096,10 +2102,10 @@ Pr(&gt;Chisq)
 1
 </td>
 <td style="text-align:right;">
-2639
+2639.36
 </td>
 <td style="text-align:right;">
-0.0000
+0.00000
 </td>
 </tr>
 <tr>
@@ -2110,10 +2116,10 @@ AGE
 1
 </td>
 <td style="text-align:right;">
-319
+318.55
 </td>
 <td style="text-align:right;">
-0.0000
+0.00000
 </td>
 </tr>
 <tr>
@@ -2124,10 +2130,10 @@ SEX
 1
 </td>
 <td style="text-align:right;">
-7
+7.02
 </td>
 <td style="text-align:right;">
-0.0081
+0.00806
 </td>
 </tr>
 <tr>
@@ -2138,14 +2144,95 @@ urban_rural
 1
 </td>
 <td style="text-align:right;">
-5664
+5663.50
 </td>
 <td style="text-align:right;">
-0.0000
+0.00000
 </td>
 </tr>
 </tbody>
 </table>
+<p>The Wald chi-square results for age and urban_rule were 318.5516181 and 5663.5045928, respectively. These large Wald chi-square results indicate that the estimate is significantly different from 0 and therefore statistically significant, p-values &lt; 2e-16. The Wald chi-square result for sex was 7.0201361 and while different from 0 and still statistically different, p-value 0.0080598.</p>
+<pre class="r"><code>temp &lt;- oddsratio::or_glm(data, model, incr = list(AGE = 1))</code></pre>
+<p>The odds ratio output from R is slighly different than SAS for the AGE predictor (R: 1.006 vs SAS: 0.994). I did not attempt to find out why this difference exists, it may be due to how R increments the <code>or_glm</code> function.</p>
+<table class="table" style>
+<caption>
+Odds Ratio
+</caption>
+<thead>
+<tr>
+<th style="text-align:right;">
+predictor
+</th>
+<th style="text-align:right;">
+oddsratio
+</th>
+<th style="text-align:right;">
+ci_low (2.5)
+</th>
+<th style="text-align:right;">
+ci_high (97.5)
+</th>
+<th style="text-align:right;">
+increment
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+AGE
+</td>
+<td style="text-align:right;">
+1.006
+</td>
+<td style="text-align:right;">
+1.006
+</td>
+<td style="text-align:right;">
+1.007
+</td>
+<td style="text-align:right;">
+1
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+SEX
+</td>
+<td style="text-align:right;">
+1.028
+</td>
+<td style="text-align:right;">
+1.007
+</td>
+<td style="text-align:right;">
+1.049
+</td>
+<td style="text-align:right;">
+Indicator variable
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+urban_rural
+</td>
+<td style="text-align:right;">
+0.360
+</td>
+<td style="text-align:right;">
+0.350
+</td>
+<td style="text-align:right;">
+0.369
+</td>
+<td style="text-align:right;">
+Indicator variable
+</td>
+</tr>
+</tbody>
+</table>
+<p>The age and sex odds ratio are very close to 1 regardless of program, indicating that the outcome is as likely to occur as it is not to occur. The urban_rural is less than 1 indicting the odds decrease based on this variable.</p>
 </div>
 </div>
 </div>

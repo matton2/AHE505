@@ -19,6 +19,7 @@ library(here)
 library(haven)
 library(car)
 library(broom)
+library(oddsratio)
 library(jtools)
 library(kableExtra)
 ```
@@ -34,6 +35,7 @@ Before getting started, I have loaded in a few packages to help us with the anal
 -   `broom`: A package used for building and cleaning up models built in R.
 -   `jtools`: A package for making publication ready tables.
 -   `kableExtra`: A package for printing pretty tables to html.
+-   `oddsratio`: A package that provides a calculation for odds ratio based upon data and a model.
 
 # From the Assignment
 
@@ -47,7 +49,22 @@ Next, you will expand on this basic model by including other covariates that sho
 
 ## Overview of the Data
 
-The data set health.sas7bdat is a cross-sectional data set of patients discharged from a hospital in 2019. with the following columns: \* subject: observation identifier - PCP\_visit: had a PCP visit within 5 days of hospital discharge (1=had a visit, 0=did not have a visit) - SEX: (1=male; 0=female) - AGE: patient age in years - urban\_rural: live in an urban or non-urban (rural, or suburban) zipcode - unemp\_rate: unemployment rate in the subject's zip code - comorbidity\_score: general score of disease states - higher scores indicate higher illness burden - ALZ: had diagnosis of Alzheimer's (yes=1, no=0) - AST: had diagnosis of asthma (yes=1, no=0) - CAD: had diagnosis of coronary artery disease (yes=1, no=0) - CHF: had diagnosis of congestive heart failure (yes=1, no=0) - COPD: had diagnosis of chronic obstructive pulmonary disease (yes=1, no=0) - DIAB: had diagnosis of diabetes (yes=1, no=0) - HTN: had diagnosis of hypertension (yes=1, no=0) - OSTEO: had diagnosis of osteoarthritis (yes=1, no=0)
+The data set health.sas7bdat is a cross-sectional data set of patients discharged from a hospital in 2019. with the following columns: 
+-   subject: observation identifier 
+-   PCP_visit: had a PCP visit within 5 days of hospital discharge (1=had a visit, 0=did not have a visit) 
+-   SEX: (1=male; 0=female) 
+-   AGE: patient age in years 
+-   urban_rural: live in an urban or non-urban (rural, or suburban) zipcode 
+-   unemp_rate: unemployment rate in the subject's zip code 
+-   comorbidity_score: general score of disease states - higher scores indicate higher illness burden 
+-   ALZ: had diagnosis of Alzheimer's (yes=1, no=0) 
+-   AST: had diagnosis of asthma (yes=1, no=0) 
+-   CAD: had diagnosis of coronary artery disease (yes=1, no=0) 
+-   CHF: had diagnosis of congestive heart failure (yes=1, no=0) 
+-   COPD: had diagnosis of chronic obstructive pulmonary disease (yes=1, no=0) 
+-   DIAB: had diagnosis of diabetes (yes=1, no=0) 
+-   HTN: had diagnosis of hypertension (yes=1, no=0) 
+-   OSTEO: had diagnosis of osteoarthritis (yes=1, no=0)
 
 # Assignment
 
@@ -57,7 +74,10 @@ In order to read the data into R, we will need to use the `haven` package.
 
 ```{r readData}
 
-data <- read_sas(here("data/health.sas7bdat"))
+data <- read_sas(here("data/health.sas7bdat")) %>% 
+  mutate(PCP_visit = as.factor(PCP_visit),
+         SEX = as.factor(SEX),
+         urban_rural = as.factor(urban_rural))
 
 
 ```
@@ -72,7 +92,7 @@ This data set contains `r NROW(data)` rows with `r NCOL(data)` variables, as des
 
 Using the variable PCP\_visit as the outcome variable run a logistic regression model using AGE, SEX, and urban\_rural to predict the likelihood that a patient had a follow-up visit with his/her PCP within 5 days of being discharged from the hospital.
 
-If you open up the code block, you will see the formula is similar to SAS.  The anova code call is slightly different, SAS defaults to using type 3 while R defaults to 1.  
+If you open up the code block, you will see the formula is similar to SAS. The anova code call is slightly different, SAS defaults to using type 3 while R defaults to 1. We just need to tell R explicit which type we want as well as which test ("Wald").
 
 ```{r basicLog, cache=TRUE}
 
@@ -98,9 +118,32 @@ Here is a summary of the anova chi-sq fit:
 
 options(knitr.kable.NA = '') # suppress showing NA values in table
 kable(anov1, format = "html",  
-      caption = "",
-      digits = c(3, 0, 4, 2, 3), align = "rrrrr")  %>%
+      caption = "Analysis of Deviance Table (Type III tests)\nResponse: PCP_visit\n",
+      digits = c(3, 2, 6), align = "rrr")  %>%
   kable_styling(position = "left")
 
 
 ```
+
+The Wald chi-square results for age and urban\_rule were `r anov1$Chisq[[2]]` and `r anov1$Chisq[[4]]`, respectively. These large Wald chi-square results indicate that the estimate is significantly different from 0 and therefore statistically significant, p-values \< 2e-16. The Wald chi-square result for sex was `r anov1$Chisq[[3]]` and while different from 0 and still statistically different, p-value `r round(anov1[[3]][[3]], 8)`.
+
+```{r odds1}
+
+odds <- oddsratio::or_glm(data, model, incr = list(AGE = 1))
+
+```
+
+The odds ratio output from R is slighly different than SAS for the AGE predictor (R: 1.006 vs SAS: 0.994).  I did not attempt to find out why this difference exists, it may be due to how R increments the `or_glm` function.
+
+```{r odds, echo=FALSE}
+
+options(knitr.kable.NA = '') # suppress showing NA values in table
+kable(odds, format = "html",  
+      caption = "Odds Ratio",
+      digits = c(0, 4, 4, 4), align = "rrrr")  %>%
+  kable_styling(position = "left")
+
+
+```
+
+The age and sex odds ratio are very close to 1 regardless of program, indicating that the outcome is as likely to occur as it is not to occur.  The urban_rural is less than 1 indicting the odds decrease based on this variable.   
