@@ -1,0 +1,106 @@
+---
+title: "Week 2 Analytical Assigment"
+author: "M. Onimus"
+date: "03/17/2020"
+output:
+  html_document:
+    code_folding: hide
+    toc: yes
+    toc_depth: 3
+    toc_float:
+      collapse: yes
+      smooth_scrolling: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(haven)
+library(car)
+library(broom)
+library(jtools)
+library(kableExtra)
+```
+
+# R Set up
+
+Before getting started, I have loaded in a few packages to help us with the analysis.
+
+-   `tidyverse`: A collection of r packages used to make data import, manipulation, and analysis easier.
+-   `here`: A package that makes it easier to navigate around the folder structure.
+-   `haven`: A package with a set of functions for reading in SAS files.
+-   `car`: A package the provides Applied Regression methods.
+-   `broom`: A package used for building and cleaning up models built in R.
+-   `jtools`: A package for making publication ready tables.
+-   `kableExtra`: A package for printing pretty tables to html.
+
+# From the Assignment
+
+## First Part
+
+You will be using SAS and the data set health.sas7bdat for this assignment. This is a cross-sectional data set of patients discharged from a hospital in 2019. The primary outcome variable is whether or not they had a Primary Care Physician (PCP) follow-up visit within 5 days of their discharge from the hospital (PCP\_visit; 1 = had a visit, 0 = did not have a visit). You will be conducting one basic logistic regression analysis with 3 covariates, that has already been specified and coded, and interpreting the results. You can use the examples from the lecture to guide you in your interpretation.
+
+## Second Part
+
+Next, you will expand on this basic model by including other covariates that should provide even more insight into the differences between those who had a PCP visit and those who did not. The purpose of this part of the assignment is not to come up with the "right" answer but rather to demonstrate you understand the process of testing and comparing different models and coming to some conclusion that describes the differences between people who go to follow-up visits and those who do not.
+
+## Overview of the Data
+
+The data set health.sas7bdat is a cross-sectional data set of patients discharged from a hospital in 2019. with the following columns: \* subject: observation identifier - PCP\_visit: had a PCP visit within 5 days of hospital discharge (1=had a visit, 0=did not have a visit) - SEX: (1=male; 0=female) - AGE: patient age in years - urban\_rural: live in an urban or non-urban (rural, or suburban) zipcode - unemp\_rate: unemployment rate in the subject's zip code - comorbidity\_score: general score of disease states - higher scores indicate higher illness burden - ALZ: had diagnosis of Alzheimer's (yes=1, no=0) - AST: had diagnosis of asthma (yes=1, no=0) - CAD: had diagnosis of coronary artery disease (yes=1, no=0) - CHF: had diagnosis of congestive heart failure (yes=1, no=0) - COPD: had diagnosis of chronic obstructive pulmonary disease (yes=1, no=0) - DIAB: had diagnosis of diabetes (yes=1, no=0) - HTN: had diagnosis of hypertension (yes=1, no=0) - OSTEO: had diagnosis of osteoarthritis (yes=1, no=0)
+
+# Assignment
+
+## Read the data in
+
+In order to read the data into R, we will need to use the `haven` package.
+
+```{r readData}
+
+data <- read_sas(here("data/health.sas7bdat"))
+
+
+```
+
+Sometimes when you read in SAS data, you get additional column name attributes, for this data, you do not.
+
+This data set contains `r NROW(data)` rows with `r NCOL(data)` variables, as described in the data overview.
+
+## First Part - Basic Logistic Regression
+
+### Questions 1-4
+
+Using the variable PCP\_visit as the outcome variable run a logistic regression model using AGE, SEX, and urban\_rural to predict the likelihood that a patient had a follow-up visit with his/her PCP within 5 days of being discharged from the hospital.
+
+If you open up the code block, you will see the formula is similar to SAS.  The anova code call is slightly different, SAS defaults to using type 3 while R defaults to 1.  
+
+```{r basicLog, cache=TRUE}
+
+model <- glm(PCP_visit ~ AGE + SEX + urban_rural ,family=binomial(link='logit'), data=data)
+
+mod1 <- summary(model)
+
+anov1 <- car::Anova(model, type = 3, test = "Wald")
+
+```
+
+Here is the summary of the model:
+
+```{r modSum, echo=FALSE}
+
+jtools::summ(model)
+
+```
+
+Here is a summary of the anova chi-sq fit:
+
+```{r anoSum, echo=FALSE}
+
+options(knitr.kable.NA = '') # suppress showing NA values in table
+kable(anov1, format = "html",  
+      caption = "",
+      digits = c(3, 0, 4, 2, 3), align = "rrrrr")  %>%
+  kable_styling(position = "left")
+
+
+```
