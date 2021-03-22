@@ -22,6 +22,7 @@ library(broom)
 library(oddsratio)
 library(jtools)
 library(kableExtra)
+library(tidymodels)
 ```
 
 # R Set up
@@ -36,6 +37,7 @@ Before getting started, I have loaded in a few packages to help us with the anal
 -   `jtools`: A package for making publication ready tables.
 -   `kableExtra`: A package for printing pretty tables to html.
 -   `oddsratio`: A package that provides a calculation for odds ratio based upon data and a model.
+-   `tidymodels`: A collection of model building packages that play very nicely in the tidyverse
 
 # From the Assignment
 
@@ -50,6 +52,7 @@ Next, you will expand on this basic model by including other covariates that sho
 ## Overview of the Data
 
 The data set health.sas7bdat is a cross-sectional data set of patients discharged from a hospital in 2019. with the following columns: 
+
 -   subject: observation identifier 
 -   PCP_visit: had a PCP visit within 5 days of hospital discharge (1=had a visit, 0=did not have a visit) 
 -   SEX: (1=male; 0=female) 
@@ -133,7 +136,7 @@ odds <- oddsratio::or_glm(data, model, incr = list(AGE = 1))
 
 ```
 
-The odds ratio output from R is slighly different than SAS for the AGE predictor (R: 1.006 vs SAS: 0.994).  I did not attempt to find out why this difference exists, it may be due to how R increments the `or_glm` function.
+The odds ratio output from R is slightly different than SAS for the AGE predictor (R: 1.006 vs SAS: 0.994).  I did not attempt to find out why this difference exists, it may be due to how R increments the `or_glm` function.
 
 ```{r odds, echo=FALSE}
 
@@ -146,4 +149,276 @@ kable(odds, format = "html",
 
 ```
 
-The age and sex odds ratio are very close to 1 regardless of program, indicating that the outcome is as likely to occur as it is not to occur.  The urban_rural is less than 1 indicting the odds decrease based on this variable.   
+The age and sex odds ratio are very close to 1 regardless of program, indicating that the outcome is as likely to occur as it is not to occur.  The urban_rural is less than 1 indicting the odds decrease based on this variable.
+
+Based upon the data, it would seem like you are more likely to have a PCP visit based on your age and where you live.  If you think about the question more broadly and without data, this would fall in line with my hypothesis.  It makes sense that the more rural areas would have a more difficult time having a following up visit, I imagine most people would not be inclined to drive a long distance to their PCP after being discharged from the hospital.  The age population is skewed towards the older, it would also make sense since they have a more difficult time getting to the PCP office.  
+
+
+```{r plot1}
+
+ggplot(data, aes(x = AGE)) +
+  geom_histogram(binwidth = 5) +
+  theme_classic() +
+  scale_x_continuous(breaks = c(10,20,30,40,50,60,70,80,90,100)) +
+  labs(
+    title = "Age Distrubtion in the Dataset",
+    subtitle = "Binwidth set to increments of 5"
+  )
+
+
+```
+
+## Second Part - Choose Your Own Adventure
+
+### Question 5
+
+I will be using a combination of packages from the `tidymodels` to build a number of different logistic models for the data.  From the original data set, I am going to remove the subject variable first.  I am also going to make an age bucket in 10 year increments, 0-10 = 1, 11-20 = 2, etc.
+
+I will also make a training and test data set so we can measure how well our models are doing at predicting the outcome (PCP_visit).  Last, I will set up a small recipe which will be used in future modeling calls.  This call will have all the variables but I will have the option to select/remove some as we continue to build our model.
+
+```{r dataPrep}
+
+dataToModelWith <- data %>% 
+  select(-subject) %>% 
+  mutate(ageBuckets = floor(AGE/10)) %>% 
+  select(-AGE)
+
+set.seed(2)
+
+dataSplit <- initial_split(dataToModelWith, prop = 3/4)
+
+trainData <- training(dataSplit)
+testData <- testing(dataSplit)
+
+
+```
+
+
+The first one below is just a blanket logistic model using all the variables as is.  We will be using the `tidymodels` workflow.  This involves building a recipe (the formula for fit), coding our model choice (glm), and finally fitting the data and viewing the results.
+
+
+```{r modelBuilding}
+
+rec <- recipe(PCP_visit ~ ., data = trainData)
+
+lrModel <- logistic_reg() %>% 
+  set_engine('glm') %>% 
+  set_mode('classification')
+
+
+modelWF <- workflow() %>% 
+  add_model(lrModel) %>% 
+  add_recipe(rec)
+
+modelFit <- modelWF %>% 
+  fit(data = trainData)
+
+
+modelFit %>% 
+  pull_workflow_fit() %>% 
+  tidy() %>% 
+  kable(., format = 'html',
+        caption = "First Model Anova Table") %>% 
+  kable_styling(position = 'left')
+  
+
+```
+
+Now that we have our model built, we can see how well we can predict on that test set we created a few sections ago.  I will be showing a probability model.   
+
+```{r allVariableFit}
+
+mod1Fit <- predict(modelFit, testData) %>% 
+  bind_cols(testData %>% select(PCP_visit))
+
+kable(table(mod1Fit),
+      caption = "First Model Confusion Matrix") %>% 
+  kable_paper() %>% 
+  add_header_above(c(" ", "Actual PCP_visit Result" = 2)) %>% 
+  pack_rows("Predicted Result",1,2) %>% 
+  kable_styling(position = 'left')
+  
+
+```
+
+Based on this model, it would seem like we can predict a PCP_visit = 0 accurately about 99.79% of the time and a PCP_visit = 1 only about 0.2% of the time.
+
+
+Next, we will start to remove some variables and see if the model can get any better.  I am going to start by removing SEX and ALZ as those are not significant at 0.01.  I will keep removing variables that pop up as not significant.
+
+```{r glm}
+
+updateRec <- rec %>% 
+  update_role(c(SEX, ALZ), new_role = "ID")
+
+model2WF <- workflow() %>% 
+  add_model(lrModel) %>% 
+  add_recipe(updateRec)
+
+modelFit2 <- model2WF %>% 
+  fit(data = trainData)
+
+# modelFit2 %>% 
+#   pull_workflow_fit() %>% 
+#   tidy() %>% 
+#   kable(., format = 'html') %>% 
+#   kable_styling(position = 'left')
+
+
+updateRec2 <- updateRec %>% 
+  update_role(OSTEO, new_role = "ID")
+
+model3WF <- workflow() %>% 
+  add_model(lrModel) %>% 
+  add_recipe(updateRec2)
+
+modelFit3 <- model3WF %>% 
+  fit(data = trainData)
+
+modelFit3 %>% 
+  pull_workflow_fit() %>% 
+  tidy() %>% 
+  kable(., format = 'html',
+        caption = "Second Model Anova Table") %>% 
+  kable_styling(position = 'left')
+
+
+```
+
+
+So I ended up removing 3 variables (SEX, ALZ, and OSTEO), we will now predict on the test data and see how the model looks now.
+
+```{r fit2}
+
+mod3Fit <- predict(modelFit3, testData) %>% 
+  bind_cols(testData %>% select(PCP_visit))
+
+kable(table(mod3Fit),
+      caption = "Second Model Confusion Matrix") %>% 
+  kable_paper() %>% 
+  add_header_above(c(" ", "Actual PCP_visit Result" = 2)) %>% 
+  pack_rows("Predicted Result",1,2) %>% 
+  kable_styling(position = 'left')
+
+
+
+
+```
+
+Based on this variable reduced model, it would seem like we can predict a PCP_visit = 0 accurately about 99.79% of the time and a PCP_visit = 1 only about 0.3% of the time, so just a touch better than the first model.
+
+The last model I am going to generate is just looking at the conditions to see if that provides up a better predictor.
+
+```{r mod4}
+
+updateRec4 <- rec %>% 
+  update_role(c(SEX, urban_rural, unemp_rate, comorbidity_score, ageBuckets), new_role = "ID")
+
+model4WF <- workflow() %>% 
+  add_model(lrModel) %>% 
+  add_recipe(updateRec4)
+
+modelFit4 <- model4WF %>% 
+  fit(data = trainData)
+
+modelFit4 %>% 
+  pull_workflow_fit() %>% 
+  tidy() %>% 
+  kable(., format = 'html',
+        caption = "Third Model Anova Table") %>% 
+  kable_styling(position = 'left')
+
+
+```
+
+I ended up with 8 predictors with 5 having a significant p-value.
+
+```{r mod4Table}
+
+mod4Fit <- predict(modelFit4, testData) %>% 
+  bind_cols(testData %>% select(PCP_visit))
+
+kable(table(mod4Fit),
+      caption = "Third Model Confusion Matrix") %>% 
+  kable_paper() %>% 
+  add_header_above(c(" ", "Actual PCP_visit Result" = 2)) %>% 
+  pack_rows("Predicted Result",1,2) %>% 
+  kable_styling(position = 'left')
+
+
+```
+
+Well I was able to successfully predict a single correct PCP_visit = 1.  Definitely not the best model I made.
+
+The best one I created was the second model but even that was not really that great.
+
+
+Finally, I am going to just explore the data by generating some plots.
+
+```{r plots1, fig.cap = "Histogram of Age Filled by PCP_visit"}
+
+ggplot(data, aes(x = AGE, fill = PCP_visit)) + 
+  geom_histogram(binwidth = 5, alpha = 0.5) +
+  scale_x_continuous(breaks = c(10,20,30,40,50,60,70,80,90,100)) +
+  theme_classic() +
+  labs(
+    title = "Histogram By Age Filled by PCP_visit"
+  )
+
+
+```
+
+Figure 1 shows the general shape of PCP_visit is the same across the entire age spectrum.  I expected that elderly or the very young to be more likely to have a follow-up appointment.  
+
+```{r plots2, fig.cap = "Histogram of Age Filled by PCP_visit and Facet by Sex"}
+
+ggplot(data, aes(x = AGE, fill = PCP_visit)) + 
+  geom_histogram(binwidth = 5, alpha = 0.5) +
+  scale_x_continuous(breaks = c(10,20,30,40,50,60,70,80,90,100)) +
+  theme_classic() +
+  labs(
+    title = "Histogram By Age Filled by PCP_visit and Faceted by Sex"
+  ) +
+  facet_wrap(~SEX)
+
+
+```
+
+Figure 2 shows the general shape of PCP_visit is the same across the entire age spectrum with the addition of sex as a facet.  Once again, we see the same trends regardless of sex.
+
+```{r plots3, fig.cap = "Histogram of Age Filled by PCP_visit and Facet by Urban"}
+
+ggplot(data, aes(x = AGE, fill = PCP_visit)) + 
+  geom_histogram(binwidth = 5, alpha = 0.5) +
+  scale_x_continuous(breaks = c(10,20,30,40,50,60,70,80,90,100)) +
+  theme_classic() +
+  labs(
+    title = "Histogram By Age Filled by PCP_visit and Faceted by Urban"
+  ) +
+  facet_wrap(~urban_rural)
+
+
+```
+
+Figure 3 is where we see the largest difference so far, urban = 0 is far more likely to have a PCP_visit = 0 compared to urban = 0.  It is important to note that the of data with urban = 1 is significantly less than urban = 0.
+
+```{r plots4, fig.cap = "Column Plot of Diag vs Count Filled by PCP_visit"}
+
+dataMorb <- dataToModelWith %>% 
+  select(PCP_visit, ALZ, AST, CAD, CHF, COPD, DIAB, HTN, OSTEO) %>% 
+  pivot_longer(!PCP_visit, names_to = "diag", values_to = 'value') %>% 
+  group_by(PCP_visit, diag) %>% 
+  summarise(count = sum(value))
+
+
+ggplot(dataMorb, aes(x = diag, y = count, fill = PCP_visit)) + 
+  geom_col(position = 'dodge', alpha = 0.5) +
+  theme_classic() +
+  labs(
+    title = "Column Plot of Diag vs Count Filled by PCP_visit"
+  )
+
+
+```
+
+I know I should not be surprised based upon how well all my models performed but I still find it shocking the number of people with pre existing conditions that do not have a PCP visit.
