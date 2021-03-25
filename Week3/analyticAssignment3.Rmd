@@ -1,0 +1,240 @@
+---
+title: "Week 3 Analytical Assigment"
+author: "M. Onimus"
+date: "03/25/2020"
+output:
+  html_document:
+    code_folding: hide
+    toc: yes
+    toc_depth: 3
+    toc_float:
+      collapse: yes
+      smooth_scrolling: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(haven)
+library(car)
+library(broom)
+library(oddsratio)
+library(jtools)
+library(kableExtra)
+library(nnet)
+library(MASS)
+
+```
+
+# R Set up
+
+Before getting started, I have loaded in a few packages to help us with the analysis.
+
+-   `tidyverse`: A collection of r packages used to make data import, manipulation, and analysis easier.
+-   `here`: A package that makes it easier to navigate around the folder structure.
+-   `haven`: A package with a set of functions for reading in SAS files.
+-   `jtools`: A package for making publication ready tables.
+-   `kableExtra`: A package for printing pretty tables to html.
+-   `nnet`: A package with a multinomal regression function
+-   `MASS`: A package with an ordinal regression function
+
+# From the Assignment
+
+## Introduction
+
+For the multinomial assignment you will use the data set log.disease_type, which has the following variables:
+
+•	subject: observation identifier
+•	AGE: patient age in years
+•	SEX: patient gender with values of 'F' and 'M'
+•	Specialist_6mos: patient seen by specialist in previous 6 months
+•	newly_diagnosed: patient was diagnosed with disease in past 12 months 1=yes 0=no
+•	chronic: family of chronic illness - 0=Respiratory; 1=Cardiac; 2=Circulatory
+•	health_rating: self-rated health 0=poor; 1=average; 2=good 
+•	age_cat: categorical age variable with 10 categories each with 10-year increments from 0-90+ 
+•	age_cat2: categorical age variable 5 categories of different bin sizes
+•	age_0_9 to age_90: 10 dummy variables for age_cat categories 
+•	age_0_17 to age_65: 5 dummy variables for age_cat2 categories 
+
+# Multinomial Logistic Regression
+
+## Read the data in
+
+In order to read the data into R, we will need to use the `haven` package.
+
+```{r readData}
+
+multi <- read_sas(here("data/disease_type.sas7bdat"))
+
+
+```
+
+This data set contains `r NROW(data)` rows with `r NCOL(data)` variables, as described in the data overview.
+
+### Questions 1-2
+
+Run the PROC LOGISTIC code below and to produce output for a multinomial logistic regression model. The model can be used to describe characteristics of people with different chronic diseases using Circulatory disease (ref='2') as the reference group. 
+
+We will need to relevel the data and then build the appropiate model.
+
+```{r multi1}
+
+multi <- multi %>% 
+  mutate(SEX = as.factor(SEX),
+         newly_diagnosed = as.factor(newly_diagnosed),
+         chronic = as.factor(trimws(chronic)),
+         chronic = relevel(chronic, ref = "2"),
+         SEX = relevel(SEX, ref = '1'),
+         newly_diagnosed = relevel(newly_diagnosed, ref = '1'))
+
+# just to check the levels
+# levels(multi$chronic)
+# levels(multi$SEX)
+# levels(multi$newly_diagnosed)
+
+model1 <- nnet::multinom(chronic ~ AGE + SEX + newly_diagnosed,
+                         data = multi)
+
+
+```
+
+Here is the summary of the model:
+
+```{r mod1}
+
+model1
+
+```
+
+Here is a summary of odds ratio estimates:
+
+```{r odds1}
+
+exp(coef(model1))
+
+
+```
+
+Interpret the odds ratios for age, sex, and newly_diagnosed.
+
+NEED TO DO THIS!!
+
+
+### Questions 3-4
+
+Run a model using Respiratory as the reference group.
+
+```{r multi2}
+
+multi2 <- multi %>% 
+  mutate(SEX = as.factor(SEX),
+         newly_diagnosed = as.factor(newly_diagnosed),
+         chronic = as.factor(trimws(chronic)),
+         chronic = relevel(chronic, ref = "0"),
+         SEX = relevel(SEX, ref = '1'),
+         newly_diagnosed = relevel(newly_diagnosed, ref = '1'))
+
+# just to check the levels
+# levels(multi$chronic)
+# levels(multi$SEX)
+# levels(multi$newly_diagnosed)
+
+model2 <- nnet::multinom(chronic ~ AGE + SEX + newly_diagnosed,
+                         data = multi2)
+
+
+```
+
+Here is the summary of the model:
+
+```{r mod2}
+
+model2
+
+```
+
+Here is a summary of odds ratio estimates:
+
+```{r odds2}
+
+exp(coef(model2))
+
+
+```
+
+Interpret the odds ratios for newly_diagnosed.
+
+NEED TO DO THIS!!!
+
+## Question 5
+
+What information was gained by changing the reference group? That is, what do we know from the results of the new model that we did not know from the previous model?
+
+
+
+## Questions 6-7
+
+Experiment with adding new variables to the model (listed above) to find a model that has fits the data better/has better explanatory power that the model with age, sex, and newly_diagnosed
+
+```{r multi3}
+
+multi3 <- multi %>% 
+  mutate(SEX = as.factor(SEX),
+         newly_diagnosed = as.factor(newly_diagnosed),
+         health_rating = as.factor(trimws(health_rating)),
+         age_cat = as.factor(age_cat),
+         age_cat2 = as.factor(age_cat2),
+         Specialist_6mos = as.factor(Specialist_6mos),
+         chronic = as.factor(trimws(chronic)),
+         chronic = relevel(chronic, ref = "0"),
+         SEX = relevel(SEX, ref = '1'),
+         newly_diagnosed = relevel(newly_diagnosed, ref = '1'))
+
+# just to check the levels
+# levels(multi$chronic)
+# levels(multi$SEX)
+# levels(multi$newly_diagnosed)
+
+model3 <- nnet::multinom(chronic ~ age_cat2 + SEX + newly_diagnosed + health_rating + Specialist_6mos,
+                         data = multi3)
+
+
+```
+
+Here is the summary of the model:
+
+```{r mod2}
+
+model3
+
+```
+
+Here is a summary of odds ratio estimates:
+
+```{r odds2}
+
+exp(coef(model3))
+
+```
+
+
+Copy and paste the results of the best fitting model you could identify and describe how you know the model fits better.
+
+
+# Orfinal Logistic Regression
+
+## Read the data in
+
+The data set log.cardiac_males is a subset of the log.disease_type data set containing only males with cardiac disease.
+
+In order to read the data into R, we will need to use the `haven` package.
+
+```{r readData}
+
+ord <- read_sas(here("data/cardiac_males.sas7bdat"))
+
+
+```
+
+This data set contains `r NROW(data)` rows with `r NCOL(data)` variables, as described in the data overview.
