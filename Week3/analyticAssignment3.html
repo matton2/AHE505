@@ -1618,12 +1618,10 @@ div.tocify {
 <li><code>tidyverse</code>: A collection of r packages used to make data import, manipulation, and analysis easier.</li>
 <li><code>here</code>: A package that makes it easier to navigate around the folder structure.</li>
 <li><code>haven</code>: A package with a set of functions for reading in SAS files.</li>
-<li><code>car</code>: A package the provides Applied Regression methods.</li>
-<li><code>broom</code>: A package used for building and cleaning up models built in R.</li>
 <li><code>jtools</code>: A package for making publication ready tables.</li>
 <li><code>kableExtra</code>: A package for printing pretty tables to html.</li>
-<li><code>oddsratio</code>: A package that provides a calculation for odds ratio based upon data and a model.</li>
 <li><code>nnet</code>: A package with a multinomal regression function</li>
+<li><code>MASS</code>: A package with an ordinal regression function</li>
 </ul>
 </div>
 <div id="from-the-assignment" class="section level1">
@@ -1640,48 +1638,204 @@ div.tocify {
 <h2>Read the data in</h2>
 <p>In order to read the data into R, we will need to use the <code>haven</code> package.</p>
 <pre class="r"><code>multi &lt;- read_sas(here(&quot;data/disease_type.sas7bdat&quot;))</code></pre>
-<p>This data set contains 1 rows with 1 variables, as described in the data overview.</p>
-<div id="questions-1-2" class="section level3">
-<h3>Questions 1-2</h3>
+<p>This data set contains 29345 rows with 24 variables, as described in the data overview.</p>
+</div>
+<div id="questions-1-2" class="section level2">
+<h2>Questions 1-2</h2>
 <p>Run the PROC LOGISTIC code below and to produce output for a multinomial logistic regression model. The model can be used to describe characteristics of people with different chronic diseases using Circulatory disease (ref=‘2’) as the reference group.</p>
 <p>We will need to relevel the data and then build the appropiate model.</p>
 <pre class="r"><code>multi &lt;- multi %&gt;% 
   mutate(SEX = as.factor(SEX),
          newly_diagnosed = as.factor(newly_diagnosed),
          chronic = as.factor(trimws(chronic)),
-         chronic = fct_relevel(chronic, c(&quot;2&quot;, &quot;0&quot;, &quot;1&quot;)))
+         chronic = relevel(chronic, ref = &quot;2&quot;),
+         SEX = relevel(SEX, ref = &#39;1&#39;),
+         newly_diagnosed = relevel(newly_diagnosed, ref = &#39;1&#39;))
 
 # just to check the levels
 # levels(multi$chronic)
-levels(multi$SEX)</code></pre>
-<pre><code>## [1] &quot;0&quot; &quot;1&quot;</code></pre>
-<pre class="r"><code>levels(multi$newly_diagnosed)</code></pre>
-<pre><code>## [1] &quot;0&quot; &quot;1&quot;</code></pre>
-<pre class="r"><code>model1 &lt;- nnet::multinom(chronic ~ AGE + SEX + newly_diagnosed,
+# levels(multi$SEX)
+# levels(multi$newly_diagnosed)
+
+model1 &lt;- nnet::multinom(chronic ~ AGE + SEX + newly_diagnosed,
                          data = multi)</code></pre>
 <pre><code>## # weights:  15 (8 variable)
 ## initial  value 32238.777611 
-## iter  10 value 16039.665957
-## final  value 16015.471446 
+## iter  10 value 16054.303575
+## final  value 16015.471445 
 ## converged</code></pre>
 <p>Here is the summary of the model:</p>
+<pre class="r"><code>model1</code></pre>
 <pre><code>## Call:
 ## nnet::multinom(formula = chronic ~ AGE + SEX + newly_diagnosed, 
 ##     data = multi)
 ## 
 ## Coefficients:
-##   (Intercept)         AGE       SEX1 newly_diagnosed1
-## 0  -0.6619571 -0.02815264  0.3772794       -0.4457407
-## 1  -2.6414600  0.00621508 -0.6177135       -0.4065959
+##   (Intercept)          AGE       SEX0 newly_diagnosed0
+## 0  -0.7304615 -0.028151699 -0.3772624        0.4457405
+## 1  -3.6658235  0.006216675  0.6176545        0.4066052
 ## 
 ## Residual Deviance: 32030.94 
 ## AIC: 32046.94</code></pre>
 <p>Here is a summary of odds ratio estimates:</p>
-<pre><code>##   (Intercept)      AGE      SEX1 newly_diagnosed1
-## 0  0.51584082 0.972240 1.4583117        0.6403498
-## 1  0.07125716 1.006234 0.5391759        0.6659132</code></pre>
-<p>Interpret the odds ratios for age, sex, and newly_diagnosed</p>
+<pre class="r"><code>exp(coef(model1))</code></pre>
+<pre><code>##   (Intercept)       AGE      SEX0 newly_diagnosed0
+## 0  0.48168666 0.9722409 0.6857361         1.561646
+## 1  0.02558309 1.0062360 1.8545730         1.501711</code></pre>
+<p>Interpret the odds ratios for age, sex, and newly_diagnosed.</p>
+<p>NEED TO DO THIS!!</p>
 </div>
+<div id="questions-3-4" class="section level2">
+<h2>Questions 3-4</h2>
+<p>Run a model using Respiratory as the reference group.</p>
+<pre class="r"><code>multi2 &lt;- multi %&gt;% 
+  mutate(SEX = as.factor(SEX),
+         newly_diagnosed = as.factor(newly_diagnosed),
+         chronic = as.factor(trimws(chronic)),
+         chronic = relevel(chronic, ref = &quot;0&quot;),
+         SEX = relevel(SEX, ref = &#39;1&#39;),
+         newly_diagnosed = relevel(newly_diagnosed, ref = &#39;1&#39;))
+
+model2 &lt;- nnet::multinom(chronic ~ AGE + SEX + newly_diagnosed,
+                         data = multi2)</code></pre>
+<pre><code>## # weights:  15 (8 variable)
+## initial  value 32238.777611 
+## iter  10 value 20255.276466
+## iter  20 value 16017.461509
+## final  value 16015.471445 
+## converged</code></pre>
+<p>Here is the summary of the model:</p>
+<pre class="r"><code>model2</code></pre>
+<pre><code>## Call:
+## nnet::multinom(formula = chronic ~ AGE + SEX + newly_diagnosed, 
+##     data = multi2)
+## 
+## Coefficients:
+##   (Intercept)        AGE      SEX0 newly_diagnosed0
+## 1  -2.9353457 0.03436820 0.9949157      -0.03913984
+## 2   0.7304788 0.02815146 0.3772620      -0.44574243
+## 
+## Residual Deviance: 32030.94 
+## AIC: 32046.94</code></pre>
+<p>Here is a summary of odds ratio estimates:</p>
+<pre class="r"><code>exp(coef(model2))</code></pre>
+<pre><code>##   (Intercept)      AGE     SEX0 newly_diagnosed0
+## 1  0.05311236 1.034966 2.704496        0.9616162
+## 2  2.07607447 1.028551 1.458286        0.6403487</code></pre>
+<p>Interpret the odds ratios for newly_diagnosed.</p>
+<p><em>Need to do this</em></p>
+</div>
+<div id="question-5" class="section level2">
+<h2>Question 5</h2>
+<p>What information was gained by changing the reference group? That is, what do we know from the results of the new model that we did not know from the previous model?</p>
+<p><em>Need to do this</em></p>
+</div>
+<div id="questions-6-7" class="section level2">
+<h2>Questions 6-7</h2>
+<p>Experiment with adding new variables to the model (listed above) to find a model that has fits the data better/has better explanatory power that the model with age, sex, and newly_diagnosed</p>
+<pre class="r"><code>multi3 &lt;- multi %&gt;% 
+  mutate(SEX = as.factor(SEX),
+         newly_diagnosed = as.factor(newly_diagnosed),
+         health_rating = as.factor(trimws(health_rating)),
+         age_cat = as.factor(age_cat),
+         age_cat2 = as.factor(age_cat2),
+         Specialist_6mos = as.factor(Specialist_6mos),
+         chronic = as.factor(trimws(chronic)),
+         chronic = relevel(chronic, ref = &quot;0&quot;),
+         SEX = relevel(SEX, ref = &#39;1&#39;),
+         newly_diagnosed = relevel(newly_diagnosed, ref = &#39;1&#39;))
+
+model3 &lt;- nnet::multinom(chronic ~ age_cat2 + SEX + newly_diagnosed + health_rating + Specialist_6mos,
+                         data = multi3)</code></pre>
+<pre><code>## # weights:  33 (20 variable)
+## initial  value 32238.777611 
+## iter  10 value 17288.040950
+## iter  20 value 16508.165289
+## iter  30 value 15837.080869
+## final  value 15837.079724 
+## converged</code></pre>
+<p>Here is the summary of the model:</p>
+<pre class="r"><code>model3</code></pre>
+<pre><code>## Call:
+## nnet::multinom(formula = chronic ~ age_cat2 + SEX + newly_diagnosed + 
+##     health_rating + Specialist_6mos, data = multi3)
+## 
+## Coefficients:
+##   (Intercept) age_cat218-34 age_cat235-54 age_cat255-64 age_cat265+      SEX0
+## 1  -2.3204154    0.01184787      1.006074      1.240432    1.238991 1.0178426
+## 2  -0.5850565    1.29289790      2.244111      2.512093    2.535350 0.3387643
+##   newly_diagnosed0 health_rating1 health_rating2 Specialist_6mos1
+## 1       0.01758105     0.01851924     -0.3644543        0.2672719
+## 2      -0.40597951     0.51676357      0.5385787        0.1746817
+## 
+## Residual Deviance: 31674.16 
+## AIC: 31714.16</code></pre>
+<p>Here is a summary of odds ratio estimates:</p>
+<pre class="r"><code>exp(coef(model3))</code></pre>
+<pre><code>##   (Intercept) age_cat218-34 age_cat235-54 age_cat255-64 age_cat265+     SEX0
+## 1  0.09823277      1.011918      2.734843      3.457107    3.452127 2.767218
+## 2  0.55707436      3.643329      9.432027     12.330712   12.620850 1.403213
+##   newly_diagnosed0 health_rating1 health_rating2 Specialist_6mos1
+## 1        1.0177365       1.018692      0.6945756         1.306396
+## 2        0.6663238       1.676593      1.7135696         1.190867</code></pre>
+<p>The 3rd model I fitted has an AIC of 31714.16 which is less than both the previous fitted models.</p>
+</div>
+</div>
+<div id="orfinal-logistic-regression" class="section level1">
+<h1>Orfinal Logistic Regression</h1>
+<div id="read-the-data-in-1" class="section level2">
+<h2>Read the data in</h2>
+<p>The data set log.cardiac_males is a subset of the log.disease_type data set containing only males with cardiac disease.</p>
+<p>In order to read the data into R, we will need to use the <code>haven</code> package.</p>
+<pre class="r"><code>ord &lt;- read_sas(here(&quot;data/cardiac_males.sas7bdat&quot;)) %&gt;% 
+  mutate(SEX = as.factor(SEX),
+         newly_diagnosed = as.factor(newly_diagnosed),
+         health_rating = as.factor(trimws(health_rating)),
+         age_cat = as.factor(age_cat),
+         age_cat2 = as.factor(age_cat2),
+         Specialist_6mos = as.factor(Specialist_6mos),
+         Specialist_6mos = relevel(Specialist_6mos, ref = &#39;1&#39;),
+         newly_diagnosed = relevel(newly_diagnosed, ref = &#39;1&#39;))</code></pre>
+<p>This data set contains 1 rows with 1 variables, as described in the data overview.</p>
+</div>
+<div id="questions-1-4" class="section level2">
+<h2>Questions 1-4</h2>
+<p>Run the ordinal model using the code below</p>
+<pre class="r"><code>model4 &lt;- polr(health_rating ~ newly_diagnosed + Specialist_6mos,
+               data = ord, method = &#39;logistic&#39;, Hess = TRUE)
+
+#model4</code></pre>
+<p>Here is the summary of the model:</p>
+<pre class="r"><code>summary(model4)</code></pre>
+<pre><code>## Call:
+## polr(formula = health_rating ~ newly_diagnosed + Specialist_6mos, 
+##     data = ord, Hess = TRUE, method = &quot;logistic&quot;)
+## 
+## Coefficients:
+##                     Value Std. Error t value
+## newly_diagnosed0 -0.43657     0.2018 -2.1638
+## Specialist_6mos0 -0.05026     0.1900 -0.2645
+## 
+## Intercepts:
+##     Value   Std. Error t value
+## 0|1 -0.7167  0.1819    -3.9401
+## 1|2  1.2969  0.1910     6.7902
+## 
+## Residual Deviance: 955.2729 
+## AIC: 963.2729</code></pre>
+<p>Here is a summary of odds ratio estimates:</p>
+<pre class="r"><code>exp(coef(model4))</code></pre>
+<pre><code>## newly_diagnosed0 Specialist_6mos0 
+##        0.6462487        0.9509820</code></pre>
+<p>Yes, an ordinal model is reasonable for this data since we are measuring health rating which has an order to it.</p>
+<p>The model fits the data reasonably well with an AIC of 963 and a residual deviance of 955.</p>
+<p>The odds ratio for a patient with newly diagnosed disease in the last 12 months to have worse health (1 or 2) is 1.55 times compared to a patient without a new diagnosis.</p>
+</div>
+<div id="questions-5-6" class="section level2">
+<h2>Questions 5-6</h2>
+<p><strong>NOTE: I did not look into how to execute this statistics in R. I have used SAS results for the below answers.</strong></p>
+<p>The predicted probability of a male with cardiac disease (everyone in this dataset) rating their health as Poor if they have been newly diagnosed and have seen a specialist in the past 6 months is 39.7%</p>
+<p>The predicted probability of having self-rated health of Poor or Average for someone who is not newly diagnosed and has not seen a specialist is 31.9%.</p>
 </div>
 </div>
 
@@ -1722,7 +1876,7 @@ $(document).ready(function () {
 <!-- code folding -->
 <script>
 $(document).ready(function () {
-  window.initializeCodeFolding("hide" === "show");
+  window.initializeCodeFolding("show" === "show");
 });
 </script>
 

@@ -4,7 +4,7 @@ author: "M. Onimus"
 date: "03/25/2020"
 output:
   html_document:
-    code_folding: hide
+    code_folding: show
     toc: yes
     toc_depth: 3
     toc_float:
@@ -70,9 +70,9 @@ multi <- read_sas(here("data/disease_type.sas7bdat"))
 
 ```
 
-This data set contains `r NROW(data)` rows with `r NCOL(data)` variables, as described in the data overview.
+This data set contains `r NROW(multi)` rows with `r NCOL(multi)` variables, as described in the data overview.
 
-### Questions 1-2
+## Questions 1-2
 
 Run the PROC LOGISTIC code below and to produce output for a multinomial logistic regression model. The model can be used to describe characteristics of people with different chronic diseases using Circulatory disease (ref='2') as the reference group. 
 
@@ -121,7 +121,7 @@ Interpret the odds ratios for age, sex, and newly_diagnosed.
 NEED TO DO THIS!!
 
 
-### Questions 3-4
+## Questions 3-4
 
 Run a model using Respiratory as the reference group.
 
@@ -134,11 +134,6 @@ multi2 <- multi %>%
          chronic = relevel(chronic, ref = "0"),
          SEX = relevel(SEX, ref = '1'),
          newly_diagnosed = relevel(newly_diagnosed, ref = '1'))
-
-# just to check the levels
-# levels(multi$chronic)
-# levels(multi$SEX)
-# levels(multi$newly_diagnosed)
 
 model2 <- nnet::multinom(chronic ~ AGE + SEX + newly_diagnosed,
                          data = multi2)
@@ -165,12 +160,13 @@ exp(coef(model2))
 
 Interpret the odds ratios for newly_diagnosed.
 
-NEED TO DO THIS!!!
+*Need to do this*
 
 ## Question 5
 
 What information was gained by changing the reference group? That is, what do we know from the results of the new model that we did not know from the previous model?
 
+*Need to do this*
 
 
 ## Questions 6-7
@@ -191,11 +187,6 @@ multi3 <- multi %>%
          SEX = relevel(SEX, ref = '1'),
          newly_diagnosed = relevel(newly_diagnosed, ref = '1'))
 
-# just to check the levels
-# levels(multi$chronic)
-# levels(multi$SEX)
-# levels(multi$newly_diagnosed)
-
 model3 <- nnet::multinom(chronic ~ age_cat2 + SEX + newly_diagnosed + health_rating + Specialist_6mos,
                          data = multi3)
 
@@ -204,7 +195,7 @@ model3 <- nnet::multinom(chronic ~ age_cat2 + SEX + newly_diagnosed + health_rat
 
 Here is the summary of the model:
 
-```{r mod2}
+```{r mod3}
 
 model3
 
@@ -212,17 +203,17 @@ model3
 
 Here is a summary of odds ratio estimates:
 
-```{r odds2}
+```{r odds3}
 
 exp(coef(model3))
 
 ```
 
 
-Copy and paste the results of the best fitting model you could identify and describe how you know the model fits better.
+The 3rd model I fitted has an AIC of 31714.16 which is less than both the previous fitted models.
 
 
-# Orfinal Logistic Regression
+# Ordinal Logistic Regression
 
 ## Read the data in
 
@@ -230,11 +221,64 @@ The data set log.cardiac_males is a subset of the log.disease_type data set cont
 
 In order to read the data into R, we will need to use the `haven` package.
 
-```{r readData}
+```{r readData2}
 
-ord <- read_sas(here("data/cardiac_males.sas7bdat"))
+ord <- read_sas(here("data/cardiac_males.sas7bdat")) %>% 
+  mutate(SEX = as.factor(SEX),
+         newly_diagnosed = as.factor(newly_diagnosed),
+         health_rating = as.factor(trimws(health_rating)),
+         age_cat = as.factor(age_cat),
+         age_cat2 = as.factor(age_cat2),
+         Specialist_6mos = as.factor(Specialist_6mos),
+         Specialist_6mos = relevel(Specialist_6mos, ref = '1'),
+         newly_diagnosed = relevel(newly_diagnosed, ref = '1'))
 
 
 ```
 
 This data set contains `r NROW(data)` rows with `r NCOL(data)` variables, as described in the data overview.
+
+## Questions 1-4
+
+Run the ordinal model using the code below
+
+```{r}
+
+model4 <- polr(health_rating ~ newly_diagnosed + Specialist_6mos,
+               data = ord, method = 'logistic', Hess = TRUE)
+
+#model4
+
+
+
+```
+
+Here is the summary of the model:
+
+```{r}
+
+summary(model4)
+
+```
+
+Here is a summary of odds ratio estimates:
+
+```{r}
+
+exp(coef(model4))
+
+```
+
+Yes, an ordinal model is reasonable for this data since we are measuring health rating which has an order to it. 
+
+The model fits the data reasonably well with an AIC of 963 and a residual deviance of 955.
+
+The odds ratio for a patient with newly diagnosed disease in the last 12 months to have worse health (1 or 2) is 1.55 times compared to a patient without a new diagnosis.  
+
+## Questions 5-6
+
+**NOTE: I did not look into how to execute this statistics in R.  I have used SAS results for the below answers.**
+
+The predicted probability of a male with cardiac disease (everyone in this dataset) rating their health as Poor if they have been newly diagnosed and have seen a specialist in the past 6 months is 39.7%
+
+The predicted probability of having self-rated health of Poor or Average for someone who is not newly diagnosed and has not seen a specialist is 31.9%.
