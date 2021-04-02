@@ -174,7 +174,7 @@ psSummmary <- ps %>%
   summarise(mean = mean(score))
 
 ggplot(ps, aes(x = score, fill = as.factor(actual))) +
-  geom_histogram(aes(y = ..density..), binwidth = 0.005) +
+  geom_histogram(aes(y = ..density.., position = 'identity'), binwidth = 0.005) +
   theme_classic()
 
 
@@ -186,7 +186,85 @@ The shape of each treatment group is very similar with slight tailing.  It is cl
 
 Looking at the ROC curve (from the SAS model), it is very close to 0.5 meaning that the model is going not better than random chance.  Since most of the sample is in the 0 treatment group, it would make sense that it would put most of the predictions closer to 0 than 1.
 
+## Question 3
+
+Run PROC PSMATCH to match the treatment and controls and examine the distribution of propensity scores.
+
+To do the propensity score matching, I will be using the `MatchIt` package (this is my first time using the package).  From reading about the packages, I need to make sure there are no NAs in the data first (there are not any) and then provide a formula and method.  I choose the nearest method here which is a 1:1 nearest neighbor without replacement with a distance estimate from the logisitic regression.
+
+```{r psmatch}
+
+set.seed(2)
+
+multiMatch <- matchit(treatment ~ total_cost_pmpm_pre + AGE + SEX + ALZ + 
+               AST + CAD + CHF + COPD + DIAB + HTN + OSTEO + 
+               disease_burden_bsln, data = multi, method = 'nearest',
+               caliper = 0.02)
+
+summary(multiMatch)
+
+matchedData <- match.data(multiMatch)
+
+matchedDatamin <- min(matchedData$distance)
+matchedDatamax <- max(matchedData$distance)
 
 
+```
+
+The nearest algorithm in R with a caliper of 0.02 matched 24,519 pairs.  The SAS algorithm matched 24,516 pairs.  
+
+The nearest algorithm in R did not match 33 in the treatment group to the control.  The SAS algorithm did not match 36.
+
+The min score matched was `r matchedDatamin` and the max score matched was `r matchedDatamax`.
+
+```{r matchedPlot1}
+
+ggplot(matchedData, aes(x = distance, fill = as.factor(treatment))) +
+ geom_histogram(position = 'identity') +
+  facet_grid(rows = vars(treatment)) +
+  theme_classic()
 
 
+```
+
+## Question 4
+
+Change the caliper to 0.01 and re-run the analyses.
+
+
+```{r psmatch2}
+
+multiMatch2 <- matchit(treatment ~ total_cost_pmpm_pre + AGE + SEX + ALZ + 
+               AST + CAD + CHF + COPD + DIAB + HTN + OSTEO + 
+               disease_burden_bsln, data = multi, method = 'nearest',
+               caliper = 0.01)
+
+summary(multiMatch2)
+
+matchedData2 <- match.data(multiMatch2)
+
+matchedDatamin2 <- min(matchedData2$distance)
+matchedDatamax2 <- max(matchedData2$distance)
+
+
+```
+
+The nearest algorithm in R with a caliper of 0.01 matched 24,486 pairs.  The SAS algorithm matched 24,467 pairs.  
+
+The nearest algorithm in R did not match 66 in the treatment group to the control.  The SAS algorithm did not match 85.
+
+The min score matched was `r matchedDatamin2` and the max score matched was `r matchedDatamax2`.
+
+```{r matchedPlot2}
+
+ggplot(matchedData2, aes(x = distance, fill = as.factor(treatment))) +
+ geom_histogram(position = 'identity') +
+  facet_grid(rows = vars(treatment)) +
+  theme_classic()
+
+
+```
+
+Both R and SAS provide a report on how the matched data looks relative to the unmatched data in terms of all the variables in respect to mean difference.  The major differences (change of 10% standard mean difference) between the two caliper inputs occur at the sex, CHF and DIAB.  The 0.01 caliber pushed the standard mean difference ~30% worse.  The CHF also got ~20% worse.  The DIAB did get better by ~11%.
+
+Based upon the mean percent change seen between the two calipers, I think I would prefer to use the looser caliper in this example.  While the tigher caliper selected less pairs, it would seem like the mean difference in those pairs actual got worse.  In reality, these differences may not actually impact my final results but still, I would select the caliper that lead to more closely paired results.
