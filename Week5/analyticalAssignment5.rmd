@@ -1,0 +1,145 @@
+---
+title: "Week 5 Analytical Assigment"
+author: "M. Onimus"
+date: "04/6/2020"
+output:
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_depth: 3
+    toc_float:
+      collapse: yes
+      smooth_scrolling: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(haven)
+library(lsmeans)
+library(rstatix)
+library(table1)
+library(kableExtra)
+library(MatchIt)
+# library(car)
+# library(broom)
+# library(oddsratio)
+# library(jtools)
+
+# library(nnet)
+# library(MASS)
+
+```
+
+# R Set up
+
+Before getting started, I have loaded in a few packages to help us with the analysis.
+
+-   `tidyverse`: A collection of r packages used to make data import, manipulation, and analysis easier.
+-   `here`: A package that makes it easier to navigate around the folder structure.
+-   `haven`: A package with a set of functions for reading in SAS files.
+-   `rstatix`: A package to quickly calculate ttest between variables
+-   `kableExtra`: A package for printing pretty tables to html.
+-   `table1`: A package that allows for creation of table 1's with relative ease
+-   `MatchIt`: A package used to create PSM
+
+
+# From the Assignment
+
+## Introduction
+
+In this week’s analytic assignment, 
+
+For the assignment you will use the data set diff_in_diff_hwk, which has the following variables:
+
+-   subject - Unique observation identifier
+-   treatment - 1=recieved the treatment; 0=did not recieve the treatment
+-   time - 1=time 1 (pre-period, or baseline); 2=time 2 (post-period, or follow-up)
+-   SEX - 1=patient was male; 0=patient was female
+-   AGE - age in years
+-   num_chron: total number of chonic conditions
+-   urban_rural: 1=live in an urban area; 0=live in or non-urban (rural, or suburban) area
+-   unemp_rate: unemployment rate in the subject's zip code
+-   med_hh_income: median household income in the subject's zip code
+-   disease_burden: general score of disease states at baseline - higher scores indicate higher illness burden
+-   IP_visits_pmpm: number of inpatient admissions
+-   IP_cost_PMPM: medical costs associated with inpatient admissions
+-   IP_cost_PMPM1: medical costs associated with inpatient admissions +$1.00 for cost analyses using log link and gamma distribution.
+-   IP_visit_flag; 1=had at least 1 inpatient (IP) admission; 0=did not have an IP admission
+-   total_cost_pmpm: total medical costs
+-   total_cost_PMPM1: total medical costs associated with ER visits +$1.00 for cost analyses using log link and gamma distribution.
+
+Note: PMPM refers to Per Member Per Month - an aggregate of the cost (or utilization) over a 12-month period divided by 12 to give an average per month for each person. In some contexts, observations for some patients may be observed over differing lengths of time so computing a measure on a per-month basis allow comparisons to be made between patients with different lengths of observation.
+
+# Assignment Start
+
+## Read the data in
+
+In order to read the data into R, we will need to use the `haven` package.
+
+```{r readData}
+
+multi <- read_sas(here("data/diff_in_diff_hwk.sas7bdat")) %>% 
+  mutate(treatment = as.factor(treatment),
+         treatment = relevel(treatment, ref = '1'),
+         time = as.factor(time),
+         time = relevel(time, ref = '2'),
+         logTotalCostPMPM1 = log(total_cost_pmpm1)
+         )
+
+
+ggplot(multi, aes(x = time, y= logTotalCostPMPM1, fill = treatment)) +
+  geom_boxplot() +
+  theme_classic()
+
+```
+
+This data set contains `r NROW(multi)` rows with `r NCOL(multi)` variables, as described in the data overview.
+
+## Questions 1-4
+
+Run the following generalized linear model using PROC GENMOD
+
+```{r glm}
+
+glm1 <- glm(total_cost_pmpm1 ~ time + treatment + time*treatment,
+            family = Gamma(link = "log"), data = multi)
+
+glm1
+
+summary(glm1)
+
+#treatment term
+mdscore::wald.test(glm1, terms = 3)
+
+# interaction term
+mdscore::wald.test(glm1, terms = 4)
+
+meansTreatment <- lsmeans::lsmeans(glm1, pairwise ~ "treatment")
+
+meansTreatment
+
+plot(meansTreatment) + theme_classic()
+
+meansTime <- lsmeans::lsmeans(glm1, pairwise ~ "time")
+
+meansTime
+
+plot(meansTime) + theme_classic()
+
+
+meansTreatmentTime <- lsmeans::lsmeans(glm1, pairwise ~ "time:treatment")
+
+meansTreatmentTime
+
+plot(meansTreatmentTime) + theme_classic()
+
+
+```
+
+The overall difference in total medical costs between time 1 and 2 is a decrease of 0.009 (log scale).  According to my analysis in R, this is not statistically significant, p-value = 0.1481.  The result indicates that cost the of medical costs for both groups decreased over time.
+
+The control (0) group medical costs at time 1 is ~ 0.26 (log scale) more than the treatment group (1).
+
+Based upon the results of the Wald Chi-Square test, yes, the difference in difference is statistically different with a resulting p-value of 0.0178.  Additionally, the treatment and time variables are statistically significant with a p-value of <0.0001 and 0.0095, respecively.  These results indicate that the treatment and time both have an impact in final medical costs for an individual.   
