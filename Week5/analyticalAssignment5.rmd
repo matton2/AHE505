@@ -142,4 +142,7 @@ The overall difference in total medical costs between time 1 and 2 is a decrease
 
 The control (0) group medical costs at time 1 is ~ 0.26 (log scale) more than the treatment group (1).
 
-Based upon the results of the Wald Chi-Square test, yes, the difference in difference is statistically different with a resulting p-value of 0.0178.  Additionally, the treatment and time variables are statistically significant with a p-value of <0.0001 and 0.0095, respecively.  These results indicate that the treatment and time both have an impact in final medical costs for an individual.   
+Based upon the results of the Wald Chi-Square test, yes, the difference in difference is statistically different with a resulting p-value of 0.0178.  Additionally, the treatment and time variables are statistically significant with a p-value of <0.0001 and 0.0095, respectively.  These results indicate that the treatment and time both have an impact in final medical costs for an individual.
+
+## Questions 5-6
+
