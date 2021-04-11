@@ -138,11 +138,53 @@ plot(meansTreatmentTime) + theme_classic()
 
 ```
 
-The overall difference in total medical costs between time 1 and 2 is a decrease of 0.009 (log scale).  According to my analysis in R, this is not statistically significant, p-value = 0.1481.  The result indicates that cost the of medical costs for both groups decreased over time.
+The overall difference in total medical costs between time 1 and 2 is a slight decrease of 0.009 (log scale).  According to my analysis in R, this is not statistically significant, p-value = 0.1481.  The result indicates that cost the of medical costs for both groups decreased over time.
 
 The control (0) group medical costs at time 1 is ~ 0.26 (log scale) more than the treatment group (1).
 
-Based upon the results of the Wald Chi-Square test, yes, the difference in difference is statistically different with a resulting p-value of 0.0178.  Additionally, the treatment and time variables are statistically significant with a p-value of <0.0001 and 0.0095, respectively.  These results indicate that the treatment and time both have an impact in final medical costs for an individual.
+Based upon the results of the Wald Chi-Square test, yes, the difference in difference is statistically different with a resulting p-value of 0.0178.  The difference of the control group is \$1.14.  The difference in the treatment group is -\$11.09.  The difference in difference is \$12.23.  Signifying the treatment can be expected to save ~\$12.23 per patient per month.  
 
 ## Questions 5-6
 
+Run the following code that uses an identity link and normal distribution. Remember from the lecture that medical costs do not conform to a normal distribution. 
+
+```{r glm2}
+
+glm2 <- glm(total_cost_pmpm1 ~ time + treatment + time*treatment,
+            family = gaussian(link = "identity"), data = multi)
+
+glm2
+
+summary(glm2)
+
+#treatment term
+mdscore::wald.test(glm2, terms = 3)
+
+# interaction term
+mdscore::wald.test(glm2, terms = 4)
+
+meansTreatment2 <- lsmeans::lsmeans(glm2, pairwise ~ "treatment")
+
+meansTreatment2
+
+plot(meansTreatment2) + theme_classic()
+
+meansTime2 <- lsmeans::lsmeans(glm2, pairwise ~ "time")
+
+meansTime2
+
+plot(meansTime2) + theme_classic()
+
+
+meansTreatmentTime2 <- lsmeans::lsmeans(glm2, pairwise ~ "time:treatment")
+
+meansTreatmentTime2
+
+plot(meansTreatmentTime2) + theme_classic()
+
+
+```
+
+Describe how the results and the interpretation of the effect of the treatment on costs changed. (This analysis is meant to demonstrate how using the inappropriate methods can lead to potentially misleading results)
+
+Based upon the results of the Wald Chi-Square test, the difference in difference is **NOT** statistically different with a resulting p-value of 0.0703.  This is despite the fact that actual difference in difference is the same.
