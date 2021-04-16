@@ -1,0 +1,112 @@
+---
+title: "Week 6 Analytical Assigment"
+author: "M. Onimus"
+date: "04/16/2020"
+output:
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_depth: 3
+    toc_float:
+      collapse: yes
+      smooth_scrolling: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(haven)
+# library(lsmeans)
+# library(rstatix)
+library(table1)
+library(kableExtra)
+library(broom)
+
+# library(car)
+# library(oddsratio)
+# library(jtools)
+
+# library(nnet)
+# library(MASS)
+
+```
+
+# R Set up
+
+Before getting started, I have loaded in a few packages to help us with the analysis.
+
+-   `tidyverse`: A collection of r packages used to make data import, manipulation, and analysis easier.
+-   `here`: A package that makes it easier to navigate around the folder structure.
+-   `haven`: A package with a set of functions for reading in SAS files.
+-   `rstatix`: A package to quickly calculate ttest between variables
+-   `kableExtra`: A package for printing pretty tables to html.
+-   `table1`: A package that allows for creation of table 1's with relative ease
+
+
+# From the Assignment
+
+For the assignment you will use the data set health_500, which has the following variables:
+
+-   Subject: Unique observation identifier
+-   Treatment: 1=received the treatment; 0=did not receive the treatment
+-   disease_burden: general score of disease states at baseline - higher scores indicate higher illness burden
+-   SEX: 1=patient was male; 0=patient was female
+
+# Assignment Start
+
+## Read the data in
+
+In order to read the data into R, we will need to use the `haven` package.
+
+```{r readData}
+
+nonParam <- read_sas(here("data/health_500.sas7bdat")) %>% 
+  mutate(treatment = as.factor(treatment),
+         treatment = relevel(treatment, ref = '0'),
+         SEX = as.factor(SEX),
+         SEX = relevel(SEX, ref = '1')
+         )
+
+```
+
+This data set contains `r NROW(nonParam)` rows with `r NCOL(nonParam)` variables, as described in the data overview.
+
+## Question 1
+
+Run the following code to generate some descriptive statistics for disease_burden by treatment. (The maxdec=2 command limits the number of decimals places to 2. This can make the output easier to read).
+
+```{r desc}
+
+descStats <- nonParam %>% 
+  group_by(treatment) %>% 
+  summarise(count = n(),
+            mean = mean(disease_burden),
+            std = sd(disease_burden),
+            se = std/sqrt(count),
+            median = median(disease_burden),
+            min = min(disease_burden),
+            max = max(disease_burden),
+            quantite = quantile(disease_burden, 0.75) - quantile(disease_burden, 0.25))
+  
+kable(descStats, digits = 2) %>% 
+  kable_styling()
+ 
+```
+
+
+
+Are there any indications in the table of descriptive statistics that suggest the data might not be normally distributed?
+
+Yes, the number one indicator to me is the max of the data.  We can see that the means and standard deviations are relatively small but the max for each treatment group, 0 and 1, are 36.52 and 7.83, respectively.  These larger numbers indicate they may be some skewness to the data.
+
+## Question 2
+
+Looking at the test for normality, is the variable disease_burden normally distributed? Interpret the Shapiro-Wilk test in the “Tests for Normality” output for both the treatment and control groups.
+
+
+
+
+
+
+What other parts of the output of the PROC UNIVARIATE indicate that the data are not normally distributed?

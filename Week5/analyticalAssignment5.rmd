@@ -49,7 +49,7 @@ Before getting started, I have loaded in a few packages to help us with the anal
 
 ## Introduction
 
-In this week’s analytic assignment, 
+In this weeks analytic assignment, 
 
 For the assignment you will use the data set diff_in_diff_hwk, which has the following variables:
 
