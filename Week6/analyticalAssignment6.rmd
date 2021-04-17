@@ -102,11 +102,147 @@ Yes, the number one indicator to me is the max of the data.  We can see that the
 
 ## Question 2
 
+First, we will make a couple plots to take a look at the data, I tend to avoid histograms as they are very subject to bin width algorithms.  I usually display both a density plot and a violin plot.
+
+```{r hist}
+
+ggplot(nonParam, aes(x = disease_burden, fill = treatment)) +
+  geom_density(alpha = 0.5) +
+  theme_classic() +
+  labs(
+    title = "Density Plot of Disease Burden by Treatment",
+    x = "Disease Burden"
+  )
+
+
+```
+
+```{r viol}
+
+ggplot(nonParam, aes(x = treatment, y = disease_burden, fill = treatment)) +
+  geom_violin() +
+  theme_classic() +
+  theme(legend.position = 'none') +
+  labs(
+    title = "Violin Plot of Disease Burden by Treatment",
+    x = "Treatment",
+    y = "Disease Burden"
+  )
+
+
+```
+
+Of course we will need to take a look at the qq plot as well
+
+```{r qq}
+
+ggplot(nonParam, aes(sample = disease_burden, color = treatment)) +
+  stat_qq() + 
+  stat_qq_line() +
+  facet_wrap(~treatment) +
+  theme_classic() +
+  theme(legend.position = 'none') +
+  labs(
+    title = "QQ Plots of Disease Burden by Treatment"
+  )
+
+
+```
+
+Finally, we will conduct the Shapiro-Wilk test on both output groups.
+
+```{r shapiro}
+
+treat0 <- nonParam %>% filter(treatment == 0) %>% pull(disease_burden)
+treat1 <- nonParam %>% filter(treatment == 1) %>% pull(disease_burden)
+
+shap0 <- shapiro.test(treat0)
+shap0
+shap1 <- shapiro.test(treat1)
+shap1
+
+```
+
 Looking at the test for normality, is the variable disease_burden normally distributed? Interpret the Shapiro-Wilk test in the “Tests for Normality” output for both the treatment and control groups.
 
-
-
-
-
+The Shapiro-Wilk test resulted in a p-value of `r shap0$p.value` for the treatment 0 group and a p-value of `r shap1$p.value` for the treatment 1 group.  Both of these tests are statistically significant indicating the distribution of the data is not normal. 
 
 What other parts of the output of the PROC UNIVARIATE indicate that the data are not normally distributed?
+
+All of the plots created indicate the data not normal.  The distribution plot shows extreme tailing at the disease burden increases in both treatment groups.  The violin plot shows a similar distribution with a large grouping of values at the lower disease burden values and quite a long tail as the disease burden increases.  Finally, both qq plots diverge rather significantly from the qq line.  
+
+## Question 3
+
+Run PROC SGPLOT and look at the boxplot it produces. What indication does the boxplot provide that the data might not me normally distributed?
+
+```{r box}
+
+ggplot(nonParam, aes(x = treatment, y = disease_burden, fill = treatment)) +
+  geom_boxplot(alpha = 0.5) +
+  theme_classic() +
+  theme(legend.position = 'none') +
+  labs(
+    title = "Boxplot of Disease Burden by Treatment",
+    y = "Disease Burden"
+  )
+
+
+```
+
+(A personal note, I do prefer the violin plot to the box plot but understand the need to look at both.)
+
+Similar to the other plots produced, there is noticeable tailing about the IQR of the plot.  This is signified by the single points (outliers) not attached to whiskers of the plot.   
+
+## Question 4
+
+Run the PROC NPAR1WAY code below. 
+
+```{r wilcoxon}
+
+wilcoxon <- wilcox.test(disease_burden~treatment, data = nonParam)
+
+wilcoxon
+
+```
+
+
+Looking at the Wilcoxon Scores (Rank Sums) table, how do you interpret the “Sum of Scores” and “Expected under H0”?
+
+(NOTE, data take from SAS)
+
+The sum of scores indicate that the 0 treatment group had a number of higher scores compared to the 1 treatment group.  This can be influenced by outliers within the data (as shown from previous plots).  The Expected under H0 provide an indication of the expected sum of scores under the null hypothesis.
+
+How do you interpret the “Mean Score” in the Wilcoxon Scores (Rank Sums) table?
+
+(NOTE, data take from SAS)
+
+The mean score show that the average score in the treatment 1 group is actually higher than the treatment 0 group.  This is not something I would have expected considering the sum of scores differences but perhaps I should have based on the N of the 0 treatment group.
+
+According to the Wilcoxon Two-Sample Test and the Kruskal-Wallis Test, what do you conclude about whether disease burdens differ between the treatment and control groups?
+
+According to both tests, the differences between the treatment and the control groups are statistically different with a p-value of `r wilcoxon$p.value` from the R version of the Wilcoxon test.  The Wilcoxon version in R seems to align better with the KW test in SAS.  There is quite an extensive note regarding the Wilcoxon test in R as there is not a unanimous definition of the test.
+
+Why does the boxplot from the PROC NPAR1WAY look different form the previous boxplot form SGPLOT?
+
+The boxplot is essentially showing 'normalized' data in the terms of the scores.  Since the data is 'transformed' into a rank order score, it would make sense that this data is approximately normally distributed.
+
+
+## Questions 5-6
+
+Run the PROC TTEST code below. As you know, an independent samples t-test compares the means between two groups and assumes the outcome variable is normally distributed. The analyses in the NPAR1WAY procedure are the non-parametric equivalents of the test.
+
+```{r ttest}
+
+ttest <- tidy(t.test(treat0, treat1))
+
+ttest
+
+```
+
+What would you conclude about the mean differences in disease_burden based on the t-test?
+
+The mean difference between the disease burden of the treatment groups is ~0.0678 corresponding to a p-value of `r ttest$p.value`.  The results indicate the difference is not statistically significant.
+
+Based on the Wilcoxon test and the t-test, what would you say if someone asked you if disease burden differed between the treatment and control group?
+
+Based on the non-normal distribution of data (see plots and Shapiro tests), a nonparametric test, Wilcoxon, will be used to assess the performance of the treatment options.  The resulting Wilcoxon test showed the treatment differences were significant with a resulting p-value of 0.0215.  In the event we assumed the data was normally distrubted and conducted a t-test, we would have arrived at a different conclusion.  The t-test would have resulted in the difference not being statistically significant with a p-value of 0.72.
