@@ -1,0 +1,138 @@
+---
+title             : "The Impact of Aspirin Daily Treatment in 8 Chronic Disease on Healthcare Utilization"
+shorttitle        : "The Impact of Aspirin Daily Treatment in 8 Chronic Disease on Healthcare Utilization"
+
+author: 
+  - name          : "Matthew Onimus"
+    affiliation   : "1"
+    corresponding : yes    # Define only one corresponding author
+    address       : "A make believe address"
+    email         : "mxo019@students.jefferson.edu"
+    role:         # Contributorship roles (e.g., CRediT, https://casrai.org/credit/)
+      - Conceptualization
+      - Writing - Original Draft Preparation
+      - Writing - Review & Editing
+
+affiliation:
+  - id            : "1"
+    institution   : "Merck & Co C/O Jefferson Univserity"
+
+authornote: |
+  Final Report for AHE 505, Statistics 2
+
+abstract: |
+  Daily aspirin treatment has been prescibed for any number of different chronic diagnosis ranging from heart failure to cancer.  This study attempts to understand the impact of healthcare utlization in total costs and utilizer categoty in regards to aspirin treatment on 8 different chronic conditions.  The chronic conditions or diseases of interest are Alzheimer’s, asthma, coronary artery disease, congestive heart failure, chronic obstructive pulmonary disease, diabetes, hypertension, and osteoarthritis.  The total healthcare utlization costs are defined as the sum of inpatient, primary care physician, and emergency costs within the period window either pre or post treatment.  The utilizer category is defined in 3 groups, low, moderate, or high utilizer within the period window either pre or post treatement.  
+  
+  Aspirin is a low cost treatment option that has already been shown to prolong life possibly due the anti-inflammorty properties[@VANE2003255].  To date, and this author did not search all that extensively, no study has been performed to understand the impact of daily aspirin treatment on healthcare utilization and/or utilizer category.
+  
+  This researcher believes that the daily aspirin treatment will lead to a decrease in total healthcare utilization per each chronic condition or disease but the decrease will not be enough to change the patients utilizer category.
+  
+  Differences will be assessed on each chronic condition or disease category 
+  
+keywords          : "Aspirin, Healthcare Utilization"
+
+bibliography      : ["r-references.bib"]
+
+floatsintext      : yes
+figurelist        : no
+tablelist         : no
+footnotelist      : no
+linenumbers       : no
+mask              : no
+draft             : no
+
+documentclass     : "apa6"
+classoption       : "doc"
+output            : papaja::apa6_pdf
+---
+
+```{r setup, include = FALSE}
+library("papaja")
+library("tidyverse")
+library('haven')
+library('kableExtra')
+r_refs("r-references.bib")
+```
+
+```{r analysis-preferences}
+# Seed for random number generation
+set.seed(2)
+knitr::opts_chunk$set(cache.extra = knitr::rand_seed)
+```
+
+```{r dataCleanUp, echo=FALSE, warning=FALSE}
+
+finalData <- read_sas(here::here('data/data_wide.sas7bdat'))
+
+finalDataClean <- finalData %>% 
+  pivot_longer(cols = c(ALZ, AST, CAD, CHF, COPD, OSTEO, DIAB, HTN), names_to = 'dis') %>% 
+  filter(value == 1) %>% 
+  mutate(SEX = as.factor(SEX),
+         SEX = fct_recode(SEX, female = '0', male = '1'),
+         treatment = as.factor(treatment),
+         treatment = fct_recode(treatment, treatment = '1', `No treatment` = '0'))
+
+finalAge <- finalDataClean %>% 
+  group_by(dis) %>% 
+  summarise(meanAge = round(mean(AGE),2),
+            sdAge = round(sd(AGE),2))
+
+finalSex <- finalDataClean %>% 
+  group_by(dis,SEX) %>% 
+  summarise(count = n()) %>% 
+  pivot_wider(names_from = SEX, values_from = count)
+
+finalDataSummary <- finalAge %>% 
+  left_join(finalSex)
+
+
+
+```
+
+# Data and Methods Overview
+
+All of the data used to complete this analysis was obtained from the AHE505 data files located in SAS.  Any patients without a preexisting disease or condition was removed the main data set.
+
+To evaluate differences in total health care utilization per member per month, a difference-in-difference approach was used.  An ordinal logistical regression was used to look assess utilizer category change.  The pre-treatment data begin at some point and ended at some point later.  The post-treatment data begin at some later point and end a little later than that.  Additional nonparametric test was used to understand the data.  
+
+To prepare the data set for analysis, individual data sets were created for each disease or condition.  A summary of the resulting summary statistics for age and sex is provided in Table 1.
+
+```{r table1}
+
+apa_table(
+  finalDataSummary,
+  caption = "Descriptive Statistics by Disease/Condition"
+)
+
+
+```
+
+## Material
+
+## Procedure
+
+## Data analysis
+
+
+
+
+
+We used `r cite_r("r-references.bib")` for all our analyses.
+
+# Results
+
+# Discussion
+
+\newpage
+
+# References
+
+```{=tex}
+\begingroup
+\setlength{\parindent}{-0.5in}
+\setlength{\leftskip}{0.5in}
+```
+::: {#refs custom-style="Bibliography"}
+:::
+
+\endgroup

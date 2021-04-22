@@ -1,0 +1,28 @@
+\begin{table*}[hbt]
+\ifnextchar[{\eatarg}{}
+[tbp]
+
+\begin{center}
+\begin{threeparttable}
+
+\caption{\label{tab:table1}Descriptive Statistics by Disease/Condition}
+
+\begin{tabular}{lllll}
+\toprule{}
+dis & \multicolumn{1}{c}{meanAge} & \multicolumn{1}{c}{sdAge} & \multicolumn{1}{c}{female} & \multicolumn{1}{c}{male}\\
+\midrule{}
+ALZ & 55.46 & 15.12 & 135 & 181\\
+AST & 54.32 & 12.19 & 4621 & 3486\\
+CAD & 57.92 & 9.80 & 4145 & 1752\\
+CHF & 57.28 & 10.61 & 877 & 499\\
+COPD & 55.34 & 11.74 & 1869 & 2254\\
+DIAB & 55.28 & 11.02 & 6935 & 5323\\
+HTN & 55.44 & 10.78 & 16844 & 14513\\
+OSTEO & 60.47 & 8.27 & 83 & 1660\\
+\bottomrule{}
+\end{tabular}
+
+\end{threeparttable}
+\end{center}
+
+\end{table*}
