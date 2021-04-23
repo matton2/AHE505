@@ -95,7 +95,7 @@ All of the data used to complete this analysis was obtained from the AHE505 data
 
 To evaluate differences in total health care utilization per member per month, a difference-in-difference approach was used.  An ordinal logistical regression was used to look assess utilizer category change.  The pre-treatment data begin at some point and ended at some point later.  The post-treatment data begin at some later point and end a little later than that.  Additional nonparametric test was used to understand the data.  
 
-To prepare the data set for analysis, individual data sets were created for each disease or condition.  A summary of the resulting summary statistics for age and sex is provided in Table 1.
+To prepare the data set for analysis, individual data sets were created for each disease or condition.  A summary of the resulting descriptive statistics for age and sex is provided in Table 1.
 
 ```{r table1}
 
@@ -107,23 +107,65 @@ apa_table(
 
 ```
 
-## Material
+## Nonparametic Tests
 
-## Procedure
+## Diff in Diff Analysis
 
-## Data analysis
+```{r diffIndiff}
+
+finalDataLong <- read_sas(here::here('data/data_long.sas7bdat'))
+
+getMeMyData <- function(variable, nameVariable) {
+  
+  qvariable <- enquo(variable)
+  
+  tempData <- filter(finalDataLong, !!qvariable ==1 )
+  
+  tempGLM <- glm(total_cost_pmpm1 ~ treatment + time + time*treatment, family = Gamma(link = 'log'), data = tempData)
+  
+  wald <- mdscore::wald.test(tempGLM, terms = 4)$pvalue
+  
+  meansTreatment <- lsmeans::lsmeans(tempGLM, pairwise ~ "time:treatment")
+  
+  means <- summary(meansTreatment$lsmeans)$lsmean
+  
+  treatment0 <- means[[2]] - means[[1]]
+  
+  treatment1 <- means[[4]] - means[[3]]
+  
+  results <- tibble(disease = nameVariable,
+                    diffInDiff = treatment1 - treatment0,
+                    wald = wald)
+  
+}
+
+alz <- getMeMyData(ALZ, "ALZ")
+ast <- getMeMyData(AST, "AST")
+cad <- getMeMyData(CAD, "CAD")
+chf <- getMeMyData(CHF, "CHF")
+copd <- getMeMyData(COPD, "COPD")
+osteo <- getMeMyData(OSTEO, "OSTEO")
+htn <- getMeMyData(HTN, "HTN")
+diab <- getMeMyData(DIAB, "DIAB")
+
+finalDiffinDiff <- bind_rows(alz, ast, cad, chf,
+                             copd, osteo, htn, diab)
+
+```
+
+## Ordinal Analysis
 
 
-
-
-
-We used `r cite_r("r-references.bib")` for all our analyses.
 
 # Results
 
 # Discussion
 
 \newpage
+
+# R Packages
+
+We used `r cite_r("r-references.bib")` for all our analyses.
 
 # References
 
