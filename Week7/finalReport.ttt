@@ -26,3 +26,31 @@ OSTEO & 60.47 & 8.27 & 83 & 1660\\
 \end{center}
 
 \end{table*}
+\begin{table*}[hbt]
+\ifnextchar[{\eatarg}{}
+[tbp]
+
+\begin{center}
+\begin{threeparttable}
+
+\caption{\label{tab:diffTable}Difference in Difference Result Summary}
+
+\begin{tabular}{llll}
+\toprule{}
+disease & \multicolumn{1}{c}{sampleSize} & \multicolumn{1}{c}{diffInDiff} & \multicolumn{1}{c}{wald}\\
+\midrule{}
+ALZ & 316.00 & -0.02 & 0.89\\
+AST & 8,107.00 & -0.02 & 0.40\\
+CAD & 5,897.00 & -0.02 & 0.48\\
+CHF & 1,376.00 & -0.02 & 0.77\\
+COPD & 4,123.00 & -0.02 & 0.56\\
+OSTEO & 1,743.00 & -0.02 & 0.68\\
+HTN & 31,357.00 & -0.02 & 0.09\\
+DIAB & 12,258.00 & -0.02 & 0.31\\
+\bottomrule{}
+\end{tabular}
+
+\end{threeparttable}
+\end{center}
+
+\end{table*}

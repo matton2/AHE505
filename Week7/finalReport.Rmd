@@ -1,6 +1,6 @@
 ---
 title             : "The Impact of Aspirin Daily Treatment in 8 Chronic Disease on Healthcare Utilization"
-shorttitle        : "The Impact of Aspirin Daily Treatment in 8 Chronic Disease on Healthcare Utilization"
+shorttitle        : "Aspirin Daily Treatment on Healthcare Utilization"
 
 author: 
   - name          : "Matthew Onimus"
@@ -33,7 +33,7 @@ keywords          : "Aspirin, Healthcare Utilization"
 
 bibliography      : ["r-references.bib"]
 
-floatsintext      : yes
+floatsintext      : no
 figurelist        : no
 tablelist         : no
 footnotelist      : no
@@ -42,7 +42,7 @@ mask              : no
 draft             : no
 
 documentclass     : "apa6"
-classoption       : "doc"
+classoption       : "man"
 output            : papaja::apa6_pdf
 ---
 
@@ -51,6 +51,7 @@ library("papaja")
 library("tidyverse")
 library('haven')
 library('kableExtra')
+library("MASS")
 r_refs("r-references.bib")
 ```
 
@@ -62,15 +63,28 @@ knitr::opts_chunk$set(cache.extra = knitr::rand_seed)
 
 ```{r dataCleanUp, echo=FALSE, warning=FALSE}
 
-finalData <- read_sas(here::here('data/data_wide.sas7bdat'))
+finalData <- read_sas(here::here('data/data_wide.sas7bdat')) %>% 
+   mutate(SEX = as.factor(SEX),
+         SEX = fct_recode(SEX, female = '0', male = '1'),
+         treatment = as.factor(treatment),
+         treatment = fct_recode(treatment, treatment = '1', `No treatment` = '0'),
+         utilizer_category_pre = as.factor(utilizer_category_pre),
+         utilizer_category_pre = fct_recode(utilizer_category_pre, Low = '1', Moderate = '2', High = '3'),
+         utilizer_category_post = as.factor(utilizer_category_post),
+         utilizer_category_post = fct_recode(utilizer_category_post, Low = '1', Moderate = '2', High = '3'))
 
 finalDataClean <- finalData %>% 
   pivot_longer(cols = c(ALZ, AST, CAD, CHF, COPD, OSTEO, DIAB, HTN), names_to = 'dis') %>% 
   filter(value == 1) %>% 
-  mutate(SEX = as.factor(SEX),
+   mutate(SEX = as.factor(SEX),
          SEX = fct_recode(SEX, female = '0', male = '1'),
          treatment = as.factor(treatment),
-         treatment = fct_recode(treatment, treatment = '1', `No treatment` = '0'))
+         treatment = fct_recode(treatment, treatment = '1', `No treatment` = '0'),
+         utilizer_category_pre = as.factor(utilizer_category_pre),
+         utilizer_category_pre = fct_recode(utilizer_category_pre, Low = '1', Moderate = '2', High = '3'),
+         utilizer_category_post = as.factor(utilizer_category_post),
+         utilizer_category_post = fct_recode(utilizer_category_post, Low = '1', Moderate = '2', High = '3'))
+ 
 
 finalAge <- finalDataClean %>% 
   group_by(dis) %>% 
@@ -89,7 +103,7 @@ finalDataSummary <- finalAge %>%
 
 ```
 
-# Data and Methods Overview
+# Data and Analysis Overview
 
 All of the data used to complete this analysis was obtained from the AHE505 data files located in SAS.  Any patients without a preexisting disease or condition was removed the main data set.
 
@@ -108,6 +122,8 @@ apa_table(
 ```
 
 ## Nonparametic Tests
+
+
 
 ## Diff in Diff Analysis
 
@@ -134,6 +150,7 @@ getMeMyData <- function(variable, nameVariable) {
   treatment1 <- means[[4]] - means[[3]]
   
   results <- tibble(disease = nameVariable,
+                    sampleSize = NROW(tempData)/2,
                     diffInDiff = treatment1 - treatment0,
                     wald = wald)
   
@@ -153,13 +170,55 @@ finalDiffinDiff <- bind_rows(alz, ast, cad, chf,
 
 ```
 
+To estimate the effect on the daily aspirin treatment, each disease or condition type was subsetted and to each subset of data, a linear model was fit with a gamma distribution with a log link.  Once a model was fitted, the $Wald-\chi^2$ test was performed on the interaction term (treatment*time) to determine statistically significance.  Finally, a difference in difference is calculated based on the time and treatment groups.  A summary of these results is presented in Table x.
+
+```{r diffTable}
+
+apa_table(
+  finalDiffinDiff,
+  caption = "Difference in Difference Result Summary"
+)
+
+```
+
 ## Ordinal Analysis
 
+```{r ordAnalyze}
+
+alz <- filter(finalData, ALZ == 1)
+
+ggplot(alz, aes(x = utilizer_category_pre, fill = treatment)) +
+  geom_histogram(stat = "count", position = 'dodge')
+
+ord <- polr(utilizer_category_post ~ utilizer_category_pre + treatment, 
+            data = alz)
+
+ci <- confint(ord)
+
+summary(ord)
+
+ctable <- (coef(summary(ord)))
+
+p <- pnorm(abs(ctable[, "t value"]), lower.tail = FALSE) * 2
+
+ctable <- cbind(ctable, "p value" = p)
+
+ctable
+
+
+
+```
 
 
 # Results
 
+For the difference in difference analysis, the  $Wald-\chi^2$ p-value for Alzheimer’s, asthma, coronary artery disease, congestive heart failure, chronic obstructive pulmonary disease, diabetes, and osteoarthritis were all > 0.1, indicating the results are not statistically significant.  Hypertension, which had the largest sample size, was the only condition which had a $Wald-\chi^2$ p-value of 0.09 indicating the result is statistically significant at a significance level of 0.1.
+
+Additionally, all of the difference in difference results were negative numbers indicating the treatment (daily aspirin dosing) actually increased the health care utilization of the treatment group.  All of the increases were relatively small, ~$1.00 per member per month.  
+
 # Discussion
+
+While not a large difference, the difference in difference results were opposite of the expectation of the decrease in health care utilization would result with the daily dosing of aspirin.  
 
 \newpage
 

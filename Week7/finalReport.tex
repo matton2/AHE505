@@ -4,7 +4,7 @@
 %
 \documentclass[
   english,
-  doc,floatsintext]{apa6}
+  man]{apa6}
 \usepackage{lmodern}
 \usepackage{amssymb,amsmath}
 \usepackage{ifxetex,ifluatex}
@@ -111,8 +111,14 @@
   {\section*{\protect\normalfont{\@title}}}
   {}{\typeout{Failed to patch title.}}
 \makeatother
-\shorttitle{The Impact of Aspirin Daily Treatment in 8 Chronic Disease on Healthcare Utilization}
+\shorttitle{Aspirin Daily Treatment on Healthcare Utilization}
 \keywords{Aspirin, Healthcare Utilization}
+\DeclareDelayedFloatFlavor{ThreePartTable}{table}
+\DeclareDelayedFloatFlavor{lltable}{table}
+\DeclareDelayedFloatFlavor*{longtable}{table}
+\makeatletter
+\renewcommand{\efloat@iwrite}[1]{\immediate\expandafter\protected@write\csname efloat@post#1\endcsname{}}
+\makeatother
 \usepackage{csquotes}
 \ifxetex
   % Load polyglossia as late as possible: uses bidi with RTL langages (e.g. Hebrew, Arabic)
@@ -160,14 +166,14 @@ Differences will be assessed on each chronic condition or disease category
 \begin{document}
 \maketitle
 
-\hypertarget{data-and-methods-overview}{%
-\section{Data and Methods Overview}\label{data-and-methods-overview}}
+\hypertarget{data-and-analysis-overview}{%
+\section{Data and Analysis Overview}\label{data-and-analysis-overview}}
 
 All of the data used to complete this analysis was obtained from the AHE505 data files located in SAS. Any patients without a preexisting disease or condition was removed the main data set.
 
 To evaluate differences in total health care utilization per member per month, a difference-in-difference approach was used. An ordinal logistical regression was used to look assess utilizer category change. The pre-treatment data begin at some point and ended at some point later. The post-treatment data begin at some later point and end a little later than that. Additional nonparametric test was used to understand the data.
 
-To prepare the data set for analysis, individual data sets were created for each disease or condition. A summary of the resulting summary statistics for age and sex is provided in Table 1.
+To prepare the data set for analysis, individual data sets were created for each disease or condition. A summary of the resulting descriptive statistics for age and sex is provided in Table 1.
 
 \begin{table}[tbp]
 
@@ -196,24 +202,62 @@ OSTEO & 60.47 & 8.27 & 83 & 1660\\
 
 \end{table}
 
-\hypertarget{material}{%
-\subsection{Material}\label{material}}
+\hypertarget{nonparametic-tests}{%
+\subsection{Nonparametic Tests}\label{nonparametic-tests}}
 
-\hypertarget{procedure}{%
-\subsection{Procedure}\label{procedure}}
+\hypertarget{diff-in-diff-analysis}{%
+\subsection{Diff in Diff Analysis}\label{diff-in-diff-analysis}}
 
-\hypertarget{data-analysis}{%
-\subsection{Data analysis}\label{data-analysis}}
+To estimate the effect on the daily aspirin treatment, each disease or condition type was subsetted and to each subset of data, a linear model was fit with a gamma distribution with a log link. Once a model was fitted, the \(Wald-\chi^2\) test was performed on the interaction term (treatment*time) to determine statistically significance. Finally, a difference in difference is calculated based on the time and treatment groups. A summary of these results is presented in Table x.
 
-We used R (Version 3.6.3; R Core Team, 2020) and the R-packages \emph{dplyr} (Version 1.0.5; Wickham et al., 2021), \emph{forcats} (Version 0.5.0; Wickham, 2020), \emph{ggplot2} (Version 3.3.3; Wickham, 2016), \emph{haven} (Version 2.3.1; Wickham \& Miller, 2020), \emph{kableExtra} (Version 1.3.1; Zhu, 2020), \emph{papaja} (Version 0.1.0.9997; Aust \& Barth, 2020), \emph{purrr} (Version 0.3.4; Henry \& Wickham, 2020), \emph{readr} (Version 1.4.0; Wickham \& Hester, 2020), \emph{stringr} (Version 1.4.0; Wickham, 2019), \emph{tibble} (Version 3.1.1; Müller \& Wickham, 2021), \emph{tidyr} (Version 1.1.3; Wickham, 2021), and \emph{tidyverse} (Version 1.3.0; Wickham, Averick, et al., 2019) for all our analyses.
+\begin{table}[tbp]
+
+\begin{center}
+\begin{threeparttable}
+
+\caption{\label{tab:diffTable}Difference in Difference Result Summary}
+
+\begin{tabular}{llll}
+\toprule{}
+disease & \multicolumn{1}{c}{sampleSize} & \multicolumn{1}{c}{diffInDiff} & \multicolumn{1}{c}{wald}\\
+\midrule{}
+ALZ & 316.00 & -0.02 & 0.89\\
+AST & 8,107.00 & -0.02 & 0.40\\
+CAD & 5,897.00 & -0.02 & 0.48\\
+CHF & 1,376.00 & -0.02 & 0.77\\
+COPD & 4,123.00 & -0.02 & 0.56\\
+OSTEO & 1,743.00 & -0.02 & 0.68\\
+HTN & 31,357.00 & -0.02 & 0.09\\
+DIAB & 12,258.00 & -0.02 & 0.31\\
+\bottomrule{}
+\end{tabular}
+
+\end{threeparttable}
+\end{center}
+
+\end{table}
+
+\hypertarget{ordinal-analysis}{%
+\subsection{Ordinal Analysis}\label{ordinal-analysis}}
 
 \hypertarget{results}{%
 \section{Results}\label{results}}
 
+For the difference in difference analysis, the \(Wald-\chi^2\) p-value for Alzheimer's, asthma, coronary artery disease, congestive heart failure, chronic obstructive pulmonary disease, diabetes, and osteoarthritis were all \textgreater{} 0.1, indicating the results are not statistically significant. Hypertension, which had the largest sample size, was the only condition which had a \(Wald-\chi^2\) p-value of 0.09 indicating the result is statistically significant at a significance level of 0.1.
+
+Additionally, all of the difference in difference results were negative numbers indicating the treatment (daily aspirin dosing) actually increased the health care utilization of the treatment group. All of the increases were relatively small, \textasciitilde\$1.00 per member per month.
+
 \hypertarget{discussion}{%
 \section{Discussion}\label{discussion}}
 
+While not a large difference, the difference in difference results were opposite of the expectation of the decrease in health care utilization would result with the daily dosing of aspirin.
+
 \newpage
+
+\hypertarget{r-packages}{%
+\section{R Packages}\label{r-packages}}
+
+We used R (Version 3.6.3; R Core Team, 2020) and the R-packages \emph{dplyr} (Version 1.0.5; Wickham et al., 2021), \emph{forcats} (Version 0.5.0; Wickham, 2020), \emph{ggplot2} (Version 3.3.3; Wickham, 2016), \emph{haven} (Version 2.3.1; Wickham \& Miller, 2020), \emph{kableExtra} (Version 1.3.1; Zhu, 2020), \emph{papaja} (Version 0.1.0.9997; Aust \& Barth, 2020), \emph{purrr} (Version 0.3.4; Henry \& Wickham, 2020), \emph{readr} (Version 1.4.0; Wickham \& Hester, 2020), \emph{stringr} (Version 1.4.0; Wickham, 2019), \emph{tibble} (Version 3.1.1; Müller \& Wickham, 2021), \emph{tidyr} (Version 1.1.3; Wickham, 2021), and \emph{tidyverse} (Version 1.3.0; Wickham, Averick, et al., 2019) for all our analyses.
 
 \hypertarget{references}{%
 \section{References}\label{references}}
