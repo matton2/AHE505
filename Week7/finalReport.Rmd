@@ -25,11 +25,11 @@ abstract: |
   
   Aspirin is a low cost treatment option that has already been shown to prolong life possibly due the anti-inflammorty properties[@VANE2003255].  To date, and this author did not search all that extensively, no study has been performed to understand the impact of daily aspirin treatment on healthcare utilization and/or utilizer category.
   
-  This researcher believes that the daily aspirin treatment will lead to a decrease in total healthcare utilization per each chronic condition or disease but the decrease will not be enough to change the patients utilizer category.
+  This researcher believes that the daily aspirin treatment will lead to a decrease total healthcare utilization per each chronic condition or disease but the decrease will not be enough to change the patients utilizer category.
   
-  Differences will be assessed on each chronic condition or disease category 
+  Differences were assessed on each chronic condition or disease category using the standard difference in difference method.  The change in utilizer category was first created and then either binomial or multinomial logistic regression was applied to understand the change in category based upon treatment for each disease or condition.   
   
-keywords          : "Aspirin, Healthcare Utilization"
+keywords          : "Aspirin, Healthcare Utilization, Difference in Difference, Logistic Regression"
 
 bibliography      : ["r-references.bib"]
 
@@ -51,6 +51,7 @@ library("papaja")
 library("tidyverse")
 library('haven')
 library('kableExtra')
+library('nnet')
 library("MASS")
 r_refs("r-references.bib")
 ```
@@ -68,10 +69,14 @@ finalData <- read_sas(here::here('data/data_wide.sas7bdat')) %>%
          SEX = fct_recode(SEX, female = '0', male = '1'),
          treatment = as.factor(treatment),
          treatment = fct_recode(treatment, treatment = '1', `No treatment` = '0'),
-         utilizer_category_pre = as.factor(utilizer_category_pre),
-         utilizer_category_pre = fct_recode(utilizer_category_pre, Low = '1', Moderate = '2', High = '3'),
-         utilizer_category_post = as.factor(utilizer_category_post),
-         utilizer_category_post = fct_recode(utilizer_category_post, Low = '1', Moderate = '2', High = '3'))
+         treatment = relevel(treatment, ref = 'No treatment'),
+         utilizerChange = utilizer_category_post - utilizer_category_pre,
+         utilizerChange = as.factor(utilizerChange),
+         utilizerChange = relevel(utilizerChange, ref = '0'),
+         utilizerChange = fct_recode(utilizerChange, noChange = '0',
+                                     smallDecrease = '-1', smallIncrease = '1',
+                                     moderateDecrease = '-2', moderateIncrease = '2',
+                                     largeDecrease = '-3', largeIncrease = '3'))
 
 finalDataClean <- finalData %>% 
   pivot_longer(cols = c(ALZ, AST, CAD, CHF, COPD, OSTEO, DIAB, HTN), names_to = 'dis') %>% 
@@ -107,7 +112,9 @@ finalDataSummary <- finalAge %>%
 
 All of the data used to complete this analysis was obtained from the AHE505 data files located in SAS.  Any patients without a preexisting disease or condition was removed the main data set.
 
-To evaluate differences in total health care utilization per member per month, a difference-in-difference approach was used.  An ordinal logistical regression was used to look assess utilizer category change.  The pre-treatment data begin at some point and ended at some point later.  The post-treatment data begin at some later point and end a little later than that.  Additional nonparametric test was used to understand the data.  
+To evaluate differences in total health care utilization per member per month, a difference-in-difference approach was used.  An ordinal logistical regression was used to look assess utilizer category change.  Finally, a binomial logistic regression was used to assess likelihood of having an admission.  
+
+The pre-treatment data begin at some point and ended at some point later.  The post-treatment data begin at some later point and end a little later than that.  Additional nonparametric test was used to understand the data.  
 
 To prepare the data set for analysis, individual data sets were created for each disease or condition.  A summary of the resulting descriptive statistics for age and sex is provided in Table 1.
 
@@ -121,11 +128,7 @@ apa_table(
 
 ```
 
-## Nonparametic Tests
-
-
-
-## Diff in Diff Analysis
+## Difference in Difference Analysis
 
 ```{r diffIndiff}
 
@@ -145,13 +148,13 @@ getMeMyData <- function(variable, nameVariable) {
   
   means <- summary(meansTreatment$lsmeans)$lsmean
   
-  treatment0 <- means[[2]] - means[[1]]
+  treatment0 <- exp(means[[2]]) - exp(means[[1]])
   
-  treatment1 <- means[[4]] - means[[3]]
+  treatment1 <- exp(means[[4]]) - exp(means[[3]])
   
   results <- tibble(disease = nameVariable,
                     sampleSize = NROW(tempData)/2,
-                    diffInDiff = treatment1 - treatment0,
+                    `diffInDiff($)` = treatment1 - treatment0,
                     wald = wald)
   
 }
@@ -170,7 +173,7 @@ finalDiffinDiff <- bind_rows(alz, ast, cad, chf,
 
 ```
 
-To estimate the effect on the daily aspirin treatment, each disease or condition type was subsetted and to each subset of data, a linear model was fit with a gamma distribution with a log link.  Once a model was fitted, the $Wald-\chi^2$ test was performed on the interaction term (treatment*time) to determine statistically significance.  Finally, a difference in difference is calculated based on the time and treatment groups.  A summary of these results is presented in Table x.
+To estimate the effect on the daily aspirin treatment on health care utlization, each disease or condition type was subsetted and to each subset of data a linear model was fit with a gamma distribution with a log link using the time, treatment, and interaction of the two terms.  Once a model was fitted, the $Wald-\chi^2$ test was performed on the interaction term (treatment*time) to determine statistically significance.  Finally, a difference in difference is calculated based on the time and treatment groups.  A summary of these results is presented in Table x.
 
 ```{r diffTable}
 
@@ -181,44 +184,90 @@ apa_table(
 
 ```
 
-## Ordinal Analysis
+## Binomal or Multinomial Regression for Utilizer Category
 
-```{r ordAnalyze}
-
-alz <- filter(finalData, ALZ == 1)
-
-ggplot(alz, aes(x = utilizer_category_pre, fill = treatment)) +
-  geom_histogram(stat = "count", position = 'dodge')
-
-ord <- polr(utilizer_category_post ~ utilizer_category_pre + treatment, 
-            data = alz)
-
-ci <- confint(ord)
-
-summary(ord)
-
-ctable <- (coef(summary(ord)))
-
-p <- pnorm(abs(ctable[, "t value"]), lower.tail = FALSE) * 2
-
-ctable <- cbind(ctable, "p value" = p)
-
-ctable
+```{r logAnalyze, echo=FALSE, warning=FALSE, message=FALSE, results=FALSE}
 
 
+getMeMyMultiData <- function(variable, nameVariable) {
+  
+  qvariable <- enquo(variable)
+
+  tempData <- filter(finalData, !!qvariable == 1)
+  
+  possibleChanges <- unique(tempData$utilizerChange)
+  
+  regression <- if(length(possibleChanges) == 2) {
+    glm(utilizerChange ~ treatment ,family=binomial(link='logit'), data=tempData)
+  } else {
+    nnet::multinom(utilizerChange ~ treatment, data = tempData)
+  }
+  
+  regressionType <- if(length(possibleChanges) == 2) {
+    'binomial'
+  } else {
+    'multinomial'
+  }
+  
+  drop <- MASS::dropterm(regression, trace = FALSE, test = "Chisq") 
+  
+  pval <- drop$`Pr(Chi)`[[2]]
+  
+  relativeRisk <- exp(coef(regression))
+
+  
+  tibble(disease = nameVariable,
+         regressionType = regressionType,
+         treatmentPvalue = pval,
+         regression = list(regression),
+         relativeRisk = list(relativeRisk))
+
+  
+  
+}
+
+alzW <- getMeMyMultiData(ALZ, "ALZ")
+astW <- getMeMyMultiData(AST, "AST")
+cadW <- getMeMyMultiData(CAD, "CAD")
+chfW <- getMeMyMultiData(CHF, "CHF")
+copdW <- getMeMyMultiData(COPD, "COPD")
+osteoW <- getMeMyMultiData(OSTEO, "OSTEO")
+htnW <- getMeMyMultiData(HTN, "HTN")
+diabW <- getMeMyMultiData(DIAB, "DIAB")
+
+finalMulti <- bind_rows(alzW, astW, cadW, chfW,
+                             copdW, osteoW, htnW, diabW)
+
+finalMultiRegressionTreatment <- finalMulti %>% dplyr::select(disease, regressionType, treatmentPvalue)
 
 ```
 
+To estimate the effect on the daily aspirin treatment on utilizer category, each disease or condition type was subsetted and to each subset of data the appropriate regression model was used based upon the number of category change outcomes and the treatment variable.  Once a model was fitted, the p-value for the treatment variable was calculated to determine statistical significance.  Finally, relative risks were calculated for each model based on treatment. 
+
+```{r logTable}
+
+apa_table(
+  finalMultiRegressionTreatment,
+  caption = "Logistic Regression Summary"
+)
+
+```
 
 # Results
 
+## Difference in Difference Results
+
 For the difference in difference analysis, the  $Wald-\chi^2$ p-value for Alzheimer’s, asthma, coronary artery disease, congestive heart failure, chronic obstructive pulmonary disease, diabetes, and osteoarthritis were all > 0.1, indicating the results are not statistically significant.  Hypertension, which had the largest sample size, was the only condition which had a $Wald-\chi^2$ p-value of 0.09 indicating the result is statistically significant at a significance level of 0.1.
 
-Additionally, all of the difference in difference results were negative numbers indicating the treatment (daily aspirin dosing) actually increased the health care utilization of the treatment group.  All of the increases were relatively small, ~$1.00 per member per month.  
+Additionally, all of the difference in difference results were negative numbers indicating the treatment (daily aspirin dosing) actually increased the health care utilization of the treatment group.  The increases ranged from ~\$21.00 to ~\$49.00 per member per month.  
+
+## Binomal or Multinomial Regression for Utilizer Category
+
+Add some words here....
 
 # Discussion
 
-While not a large difference, the difference in difference results were opposite of the expectation of the decrease in health care utilization would result with the daily dosing of aspirin.  
+The difference in difference results were opposite of the expectation of the decrease in health care utilization would result with the daily dosing of aspirin.  
 
 \newpage
 
