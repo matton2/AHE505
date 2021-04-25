@@ -63,18 +63,44 @@ DIAB & 12,258.00 & -27.94 & 0.31\\
 
 \caption{\label{tab:logTable}Logistic Regression Summary}
 
-\begin{tabular}{ll}
+\begin{tabular}{lll}
 \toprule{}
-regressionType & \multicolumn{1}{c}{treatmentPvalue}\\
+disease & \multicolumn{1}{c}{regressionType} & \multicolumn{1}{c}{treatmentPvalue}\\
 \midrule{}
-binomial & 0.44\\
-multinomial & 0.00\\
-multinomial & 0.00\\
-multinomial & 0.07\\
-multinomial & 0.00\\
-multinomial & 0.00\\
-multinomial & 0.00\\
-multinomial & 0.00\\
+ALZ & binomial & 0.44\\
+AST & multinomial & 0.00\\
+CAD & multinomial & 0.00\\
+CHF & multinomial & 0.07\\
+COPD & multinomial & 0.00\\
+OSTEO & multinomial & 0.00\\
+HTN & multinomial & 0.00\\
+DIAB & multinomial & 0.00\\
+\bottomrule{}
+\end{tabular}
+
+\end{threeparttable}
+\end{center}
+
+\end{table*}
+\begin{table*}[hbt]
+\ifnextchar[{\eatarg}{}
+[tbp]
+
+\begin{center}
+\begin{threeparttable}
+
+\caption{\label{tab:oddsTable}Relative Risks Summary}
+
+\begin{tabular}{lll}
+\toprule{}
+disease & \multicolumn{1}{c}{smallDecrease} & \multicolumn{1}{c}{smallIncrease}\\
+\midrule{}
+AST & 1.75 & 2.08\\
+CAD & 3.20 & 2.00\\
+COPD & 2.59 & 2.08\\
+OSTEO & 1.10 & 2.14\\
+HTN & 1.55 & 2.08\\
+DIAB & 2.23 & 1.90\\
 \bottomrule{}
 \end{tabular}
 

@@ -21,13 +21,13 @@ authornote: |
   Final Report for AHE 505, Statistics 2
 
 abstract: |
-  Daily aspirin treatment has been prescibed for any number of different chronic diagnosis ranging from heart failure to cancer.  This study attempts to understand the impact of healthcare utlization in total costs and utilizer categoty in regards to aspirin treatment on 8 different chronic conditions.  The chronic conditions or diseases of interest are Alzheimer’s, asthma, coronary artery disease, congestive heart failure, chronic obstructive pulmonary disease, diabetes, hypertension, and osteoarthritis.  The total healthcare utlization costs are defined as the sum of inpatient, primary care physician, and emergency costs within the period window either pre or post treatment.  The utilizer category is defined in 3 groups, low, moderate, or high utilizer within the period window either pre or post treatement.  
+  Daily aspirin treatment has been prescibed for any number of different chronic diagnoses ranging from heart failure to cancer.  This study attempts to understand the impact of healthcare utlization in total costs and utilizer category in regards to aspirin treatment on 8 different chronic conditions.  The chronic conditions or diseases of interest are Alzheimer’s, asthma, coronary artery disease, congestive heart failure, chronic obstructive pulmonary disease, diabetes, hypertension, and osteoarthritis.  The total healthcare utlization costs are defined as the sum of inpatient, primary care physician, and emergency costs within the period window either pre or post treatment.  The utilizer category is defined in 3 groups: low, moderate, or high utilizer within the period window either pre or post treatement.  
   
   Aspirin is a low cost treatment option that has already been shown to prolong life possibly due the anti-inflammorty properties[@VANE2003255].  To date, and this author did not search all that extensively, no study has been performed to understand the impact of daily aspirin treatment on healthcare utilization and/or utilizer category.
   
   This researcher believes that the daily aspirin treatment will lead to a decrease total healthcare utilization per each chronic condition or disease but the decrease will not be enough to change the patients utilizer category.
   
-  Differences were assessed on each chronic condition or disease category using the standard difference in difference method.  The change in utilizer category was first created and then either binomial or multinomial logistic regression was applied to understand the change in category based upon treatment for each disease or condition.   
+  Differences were assessed on each chronic condition or disease category using the standard difference-in-difference method.  The change in utilizer category was first created and then either binomial or multinomial logistic regression was applied to understand the change in category based upon treatment for each disease or condition.   
   
 keywords          : "Aspirin, Healthcare Utilization, Difference in Difference, Logistic Regression"
 
@@ -110,11 +110,11 @@ finalDataSummary <- finalAge %>%
 
 # Data and Analysis Overview
 
-All of the data used to complete this analysis was obtained from the AHE505 data files located in SAS.  Any patients without a preexisting disease or condition was removed the main data set.
+All of the data used to complete this analysis was obtained from the AHE505 data files located in SAS.  Any patients without a preexisting disease or condition were removed from the main data set.
 
-To evaluate differences in total health care utilization per member per month, a difference-in-difference approach was used.  An ordinal logistical regression was used to look assess utilizer category change.  Finally, a binomial logistic regression was used to assess likelihood of having an admission.  
+To evaluate differences in total health care utilization per member per month, a difference-in-difference approach was used.  Either a binomial or multinomial regression was used to assess utilizer category changes change depending on the number of changes present within the subsetted data.
 
-The pre-treatment data begin at some point and ended at some point later.  The post-treatment data begin at some later point and end a little later than that.  Additional nonparametric test was used to understand the data.  
+The pre-treatment data begin at some point and end at some point later.  The post-treatment data begin at some later point and ended a little later than that. 
 
 To prepare the data set for analysis, individual data sets were created for each disease or condition.  A summary of the resulting descriptive statistics for age and sex is provided in Table 1.
 
@@ -173,7 +173,7 @@ finalDiffinDiff <- bind_rows(alz, ast, cad, chf,
 
 ```
 
-To estimate the effect on the daily aspirin treatment on health care utlization, each disease or condition type was subsetted and to each subset of data a linear model was fit with a gamma distribution with a log link using the time, treatment, and interaction of the two terms.  Once a model was fitted, the $Wald-\chi^2$ test was performed on the interaction term (treatment*time) to determine statistically significance.  Finally, a difference in difference is calculated based on the time and treatment groups.  A summary of these results is presented in Table x.
+To estimate the effect of daily aspirin treatment on health care utilization, each disease or condition type was subset. To each subset of data a linear model was fit with a gamma distribution with a log link using the time, treatment, and interaction of the two terms.  Once a model was fitted, the $Wald-\chi^2$ test was performed on the interaction term (treatment*time) to determine statistical significance.  Finally, a difference-in-difference is calculated based on the time and treatment groups.  A summary of these results is presented in Table 2.
 
 ```{r diffTable}
 
@@ -213,8 +213,7 @@ getMeMyMultiData <- function(variable, nameVariable) {
   
   pval <- drop$`Pr(Chi)`[[2]]
   
-  relativeRisk <- exp(coef(regression))
-
+  relativeRisk <- as_tibble(exp(coef(regression)), rownames = NA) %>% rownames_to_column()
   
   tibble(disease = nameVariable,
          regressionType = regressionType,
@@ -240,9 +239,18 @@ finalMulti <- bind_rows(alzW, astW, cadW, chfW,
 
 finalMultiRegressionTreatment <- finalMulti %>% dplyr::select(disease, regressionType, treatmentPvalue)
 
+finalMultiOdds <- finalMulti %>% 
+  filter(treatmentPvalue < 0.05) %>% 
+  dplyr::select(disease, relativeRisk) %>% 
+  unnest() %>% 
+  dplyr::select(disease, rowname, treatmenttreatment) %>% 
+  pivot_wider(names_from = rowname, values_from = treatmenttreatment)
+
 ```
 
-To estimate the effect on the daily aspirin treatment on utilizer category, each disease or condition type was subsetted and to each subset of data the appropriate regression model was used based upon the number of category change outcomes and the treatment variable.  Once a model was fitted, the p-value for the treatment variable was calculated to determine statistical significance.  Finally, relative risks were calculated for each model based on treatment. 
+To prepare the data for utilizer category analysis, a new variable, utilizer change, was created based on the difference of the post utilizer category and the pre utilizer category.  There are 6 possible utilizer change outcomes. The reference level, 0, signifies no utilizer change.  If the utilizer category decreased, determined by a -1, -2, or -3 in the utilizer change variable, these were marked as small decrease, moderate decrease, and large decrease, respectively.  If the utilizer category increased, determined by a 1, 2, or 3 in the utilizer change variable, these were marked as small increase, moderate increase, or large increase, respectively.  In the dataset presented here, only small decrease, no change, and small increase were possible outcomes. 
+
+To estimate the effect of the daily aspirin treatment on utilizer category, each disease or condition type was subset and to each subset of data the appropriate regression model was used based upon the number of category change outcomes and the treatment variable.  Once a model was fitted, the p-value for the treatment variable was calculated to determine statistical significance (refer to Table 3).  Finally, relative risks were calculated for each model based on treatment (refer to Table 4).
 
 ```{r logTable}
 
@@ -253,21 +261,32 @@ apa_table(
 
 ```
 
+```{r oddsTable}
+
+apa_table(
+  finalMultiOdds,
+  caption = "Relative Risks Summary"
+)
+
+```
+
 # Results
 
 ## Difference in Difference Results
 
-For the difference in difference analysis, the  $Wald-\chi^2$ p-value for Alzheimer’s, asthma, coronary artery disease, congestive heart failure, chronic obstructive pulmonary disease, diabetes, and osteoarthritis were all > 0.1, indicating the results are not statistically significant.  Hypertension, which had the largest sample size, was the only condition which had a $Wald-\chi^2$ p-value of 0.09 indicating the result is statistically significant at a significance level of 0.1.
+For the difference-in-difference analysis, the  $Wald-\chi^2$ p-value for Alzheimer’s, asthma, coronary artery disease, congestive heart failure, chronic obstructive pulmonary disease, diabetes, and osteoarthritis were all > 0.1, indicating the results are not statistically significant.  Hypertension, which had the largest sample size, was the only condition which had a $Wald-\chi^2$ p-value of 0.09 indicating the result is statistically significant at a significance level of 0.1.
 
-Additionally, all of the difference in difference results were negative numbers indicating the treatment (daily aspirin dosing) actually increased the health care utilization of the treatment group.  The increases ranged from ~\$21.00 to ~\$49.00 per member per month.  
+Additionally, all of the difference-in-difference results were negative numbers indicating the treatment (daily aspirin dosing) actually increased the health care utilization of the treatment group.  The increases ranged from ~\$21.00 to ~\$49.00 per member per month.  
 
 ## Binomal or Multinomial Regression for Utilizer Category
 
-Add some words here....
+For the binomal or multinomial regression analysis, the p-value was only significant (at a 0.05 signficance level) for 6 of the 8 disease types; asthma, coronary artery disease, chronic obstructive pulmonary disease, diabetes, hypertension, and osteoarthritis.  
+
+For the 6 statistically significant disease and condition types, relative risk ratios were calculated.  As a reminder, the reference level was no change (0) and each of the relative risks are presented as changing from no treatment to treatment.  For example, the relative risk of a patient with asthma switching from no treatment to treatment (daily aspirin) is 1.75 for being in the no change category compared to the small decrease category.  For that sample asthma patient, the relative risk of switching from no treatment to treatment is 2.08 for being in the no change category to the small increase category.  
 
 # Discussion
 
-The difference in difference results were opposite of the expectation of the decrease in health care utilization would result with the daily dosing of aspirin.  
+The difference-in-difference and the utilizer category results were opposite of the expectations.  Daily aspirin treatment resulted in an increase in health care utilizer per member per month by modestly large amount for some disease or condition categories despite not being statistically significant.  The regression analysis for utilizer change category resulted in more statistically significant outcomes, showing that treatment resulted the possibility of both small increases or decreases in utilizer change category.
 
 \newpage
 
